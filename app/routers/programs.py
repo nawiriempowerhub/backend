@@ -2,12 +2,13 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app import models, schemas, services, dependencies
+from app.services import crud_service
 
 router = APIRouter(tags=["Programs"])
 
 @router.get("/api/programs", response_model=List[schemas.Program])
 def read_programs(skip: int = 0, limit: int = 100, db: Session = Depends(dependencies.get_db)):
-    programs = services.crud_service.get_items(db, model=models.Program, skip=skip, limit=limit)
+    programs = crud_service.get_items(db, model=models.Program, skip=skip, limit=limit)
     return programs
 
 @router.post("/api/programs", response_model=schemas.Program, status_code=201)

@@ -7,6 +7,7 @@ class UserRole(str, enum.Enum):
     ADMIN = "Admin"
     VOLUNTEER = "Volunteer"
     PARTNER = "Partner"
+    USER = "User"
 
 class ProgramCategory(str, enum.Enum):
     MENSTRUAL_HEALTH = "Menstrual Health"

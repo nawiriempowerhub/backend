@@ -18,6 +18,8 @@ DB_DIALECT = "postgresql" # Or read from env if you prefer: os.getenv("DB_DIALEC
 # Construct the full database connection URL
 DATABASE_URL = f"{DB_DIALECT}://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
+print("DATABASE_URL =", DATABASE_URL)  # <--- Add this line here
+
 # SQLAlchemy engine setup
 engine = create_engine(DATABASE_URL)
 
