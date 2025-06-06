@@ -1,0 +1,50 @@
+from typing import List
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+from app import models, schemas, services
+from app.dependencies import get_db, get_current_active_user
+
+router = APIRouter(
+    prefix="/api/contact",
+    tags=["Contact Us"],
+)
+
+@router.post("", response_model=schemas.ContactSubmission, status_code=status.HTTP_201_CREATED)
+def submit_contact_form(contact: schemas.ContactSubmissionCreate, db: Session = Depends(get_db)):
+    """
+    Submit a contact form. This is a public endpoint.
+    """
+    return services.crud_service.create_item(db=db, model=models.ContactSubmission, item=contact)
+
+@router.get("", response_model=List[schemas.ContactSubmission])
+def view_contact_submissions(
+    skip: int = 0, 
+    limit: int = 100, 
+    db: Session = Depends(get_db), 
+    current_user: models.User = Depends(get_current_active_user)
+):
+    """
+    View all contact form submissions. Requires admin privileges.
+    """
+    if current_user.role != models.UserRole.ADMIN:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to view submissions")
+    submissions = services.crud_service.get_items(db, model=models.ContactSubmission, skip=skip, limit=limit)
+    return submissions
+
+@router.delete("/{submission_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_contact_submission(
+    submission_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user)
+):
+    """
+    Delete or archive a contact submission. Requires admin privileges.
+    """
+    if current_user.role != models.UserRole.ADMIN:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to delete submissions")
+
+    db_submission = services.crud_service.delete_item(db, model=models.ContactSubmission, item_id=submission_id)
+    if not db_submission:
+        raise HTTPException(status_code=404, detail="Submission not found")
+    
+    return
