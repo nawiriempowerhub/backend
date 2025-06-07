@@ -47,15 +47,22 @@ class ProgramBase(BaseModel):
     title: str
     description: str
     category: ProgramCategory
-    image_url: Optional[str] = None
+   
 
 class ProgramCreate(ProgramBase):
     """Schema for creating a new program."""
     pass
 
+class ProgramUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    category: Optional[str] = None
+    image_url: Optional[str] = None
+
 class Program(ProgramBase):
     """Schema for returning program data in responses."""
     id: int
+    image_url: str
     created_at: datetime
 
     class Config:
