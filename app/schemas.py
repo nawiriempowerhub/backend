@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, HttpUrl
 from typing import List, Optional
 from datetime import datetime
 from .models import UserRole, ProgramCategory, MediaType, VolunteerStatus
@@ -69,30 +69,6 @@ class Program(ProgramBase):
         orm_mode = True
 
 # ==============================================================================
-# 📝 Blog Schemas
-# ==============================================================================
-
-class BlogBase(BaseModel):
-    """Base schema for blog posts."""
-    title: str
-    content: str
-    tags: Optional[str] = None
-
-class BlogCreate(BlogBase):
-    """Schema for creating a new blog post."""
-    pass
-
-class Blog(BlogBase):
-    """Schema for returning blog post data, includes author info."""
-    id: int
-    author_id: int
-    created_at: datetime
-    updated_at: Optional[datetime] = None
-
-    class Config:
-        orm_mode = True
-
-# ==============================================================================
 # 🖼️ Media Schemas
 # ==============================================================================
 
@@ -100,8 +76,9 @@ class MediaBase(BaseModel):
     """Base schema for media items."""
     title: str
     type: MediaType
-    url: str
+    file_url: Optional[HttpUrl] = None
     program_id: Optional[int] = None
+    description: Optional[str] = None
 
 class MediaCreate(MediaBase):
     """Schema for creating a new media item record."""
@@ -115,6 +92,26 @@ class Media(MediaBase):
     class Config:
         orm_mode = True
 
+class MediaProgramUpdate(BaseModel):
+    program_id: Optional[int]
+    
+from typing import Optional
+from pydantic import BaseModel
+import enum
+
+   
+
+class MediaUpdate(BaseModel):
+    title: Optional[str]
+    description: Optional[str]
+    type: Optional[MediaType]
+    file_url: Optional[str]
+    external_link: Optional[str]
+    is_featured: Optional[bool]
+    tags: Optional[str]
+    program_id: Optional[int]  # Optional: still allow updating program too
+
+    
 # ==============================================================================
 # 📩 Contact Submission Schemas
 # ==============================================================================

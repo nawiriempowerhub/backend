@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, Text, Enum, ForeignKey, DateTime, func
+from datetime import datetime
+from sqlalchemy import Boolean, Column, Integer, String, Text, Enum, ForeignKey, DateTime, func
 from sqlalchemy.orm import relationship
 from .database import Base
 import enum
@@ -16,9 +17,15 @@ class ProgramCategory(str, enum.Enum):
     YOUTH_EMPOWERMENT = "Youth Empowerment"
 
 class MediaType(str, enum.Enum):
-    PHOTO = "Photo"
-    VIDEO = "Video"
-    REPORT = "Report"
+    PHOTO = "PHOTO"
+    VIDEO = "VIDEO"
+    INFOGRAPHIC = "INFOGRAPHIC"
+    TESTIMONIAL = "TESTIMONIAL"
+    REPORT_LINK = "REPORT_LINK"
+    NEWSLETTER = "NEWSLETTER"
+    MEDIA_COVERAGE = "MEDIA_COVERAGE"
+    YOUTUBE_EMBED = "YOUTUBE_EMBED"
+
 
 class VolunteerStatus(str, enum.Enum):
     PENDING = "Pending"
@@ -48,14 +55,19 @@ class Program(Base):
 
 class Media(Base):
     __tablename__ = "media"
+    
     id = Column(Integer, primary_key=True, index=True)
-    title = Column(String)
-    type = Column(Enum(MediaType))
-    url = Column(String)
-    program_id = Column(Integer, ForeignKey("programs.id"))
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    title = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    type = Column(Enum(MediaType), nullable=False)
+    file_url = Column(String, nullable=True)
+    external_link = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    is_featured = Column(Boolean, default=False)
+    tags = Column(Text, nullable=True)  # Optional tags (comma-separated)
+    program_id = Column(Integer, ForeignKey('programs.id'))  # <-- Foreign key defined here
     program = relationship("Program", back_populates="media")
-
 
 
 class ContactSubmission(Base):

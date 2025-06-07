@@ -39,6 +39,95 @@ def create_media_item(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to upload media")
     return services.crud_service.create_item(db=db, model=models.Media, item=media)
 
+@router.get("/by-program/{program_id}", response_model=List[schemas.Media])
+def read_media_by_program(
+    program_id: int,
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db)
+):
+    """
+    Retrieve all media items linked to a specific program by program_id.
+    """
+    media_items = (
+        db.query(models.Media)
+        .filter(models.Media.program_id == program_id)
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+    return media_items
+
+
+@router.get("/{media_id}/program", response_model=schemas.Program)
+def get_program_for_media(media_id: int, db: Session = Depends(get_db)):
+    media = db.query(models.Media).filter(models.Media.id == media_id).first()
+    if not media:
+        raise HTTPException(status_code=404, detail="Media not found")
+    return media.program
+
+
+@router.get("/{media_id}", response_model=schemas.Media)
+def get_media_by_id(media_id: int, db: Session = Depends(get_db)):
+    media = db.query(models.Media).filter(models.Media.id == media_id).first()
+    if not media:
+        raise HTTPException(status_code=404, detail="Media not found")
+    return media
+
+@router.patch("/{media_id}/program", response_model=schemas.Media)
+def update_media_program(
+    media_id: int,
+    program_update: schemas.MediaProgramUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user)
+):
+    if current_user.role != models.UserRole.ADMIN:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to update media")
+
+    media = db.query(models.Media).filter(models.Media.id == media_id).first()
+    if not media:
+        raise HTTPException(status_code=404, detail="Media not found")
+    
+    # Optional: Check if the new program_id exists before assigning
+    if program_update.program_id is not None:
+        program = db.query(models.Program).filter(models.Program.id == program_update.program_id).first()
+        if not program:
+            raise HTTPException(status_code=400, detail="Program not found")
+
+    media.program_id = program_update.program_id
+    db.commit()
+    db.refresh(media)
+    return media
+
+@router.patch("/{media_id}", response_model=schemas.Media)
+def update_media(
+    media_id: int,
+    media_update: schemas.MediaUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user)
+):
+    if current_user.role != models.UserRole.ADMIN:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to update media")
+
+    media = db.query(models.Media).filter(models.Media.id == media_id).first()
+    if not media:
+        raise HTTPException(status_code=404, detail="Media not found")
+
+    update_data = media_update.dict(exclude_unset=True)
+
+    # Optionally validate program_id if it's being updated
+    if "program_id" in update_data:
+        program = db.query(models.Program).filter(models.Program.id == update_data["program_id"]).first()
+        if not program:
+            raise HTTPException(status_code=400, detail="Program not found")
+
+    for key, value in update_data.items():
+        setattr(media, key, value)
+
+    db.commit()
+    db.refresh(media)
+    return media
+
 @router.delete("/{media_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_media_item(
     media_id: int,
