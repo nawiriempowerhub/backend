@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Boolean, Column, Integer, String, Text, Enum, ForeignKey, DateTime, func
+from sqlalchemy import Boolean, Column, Date, Integer, String, Text, Enum, ForeignKey, DateTime, func
 from sqlalchemy.orm import relationship
 from .database import Base
 import enum
@@ -10,6 +10,39 @@ class UserRole(str, enum.Enum):
     VOLUNTEER = "VOLUNTEER"
     PARTNER = "PARTNER"
     USER = "USER"  # Add this only if your DB also has 'USER'
+
+# models/about.py
+from sqlalchemy import Column, Integer, String, Text, Date
+from app.database import Base
+
+class About(Base):
+    __tablename__ = "about"
+
+    id = Column(Integer, primary_key=True, index=True)
+    story = Column(Text)
+    mission = Column(Text)
+    vision = Column(Text)
+    core_values = Column(Text)
+    impact_summary = Column(Text, nullable=True)
+    timeline = Column(Text, nullable=True)
+
+class TeamMember(Base):
+    __tablename__ = "team_members"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String)
+    role = Column(String)
+    bio = Column(Text)
+    photo_filename = Column(String, nullable=False)  # ✅ must be provided
+
+class ImpactEvent(Base):
+    __tablename__ = "impact_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String)
+    description = Column(Text)
+    date = Column(Date)
+    image_filename = Column(String, nullable=True)  # ✅ Add image filename
 
 class ProgramCategory(str, enum.Enum):
     MENSTRUAL_HEALTH = "Menstrual Health"

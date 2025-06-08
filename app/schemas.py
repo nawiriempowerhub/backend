@@ -1,6 +1,8 @@
 from pydantic import BaseModel, EmailStr, Field, HttpUrl
 from typing import List, Optional
 from datetime import datetime
+
+from datetime import date
 from .models import UserRole, ProgramCategory, MediaType, VolunteerStatus
 
 # ==============================================================================
@@ -197,3 +199,64 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     """Schema for the data encoded within the JWT."""
     email: Optional[str] = None
+    
+# ============================
+# 👥 Team Member Schemas
+# ============================
+
+class TeamMemberBase(BaseModel):
+    id: int
+    name: str
+    role: str
+    bio: str
+    photo_filename: Optional[str]  # Change from HttpUrl to Optional[str]
+
+
+    class Config:
+        orm_mode = True
+        
+class TeamMemberCreate(TeamMemberBase): pass
+
+class TeamMember(TeamMemberBase):
+    id: int
+    class Config:
+        orm_mode = True
+
+# ============================
+# 📄 About Schemas
+# ============================
+
+class AboutBase(BaseModel):
+    story: str
+    mission: str
+    vision: str
+    core_values: str
+    impact_summary: Optional[str] = None
+    timeline: Optional[str] = None
+
+class AboutCreate(AboutBase): pass
+class AboutUpdate(AboutBase): pass
+
+class About(AboutBase):
+    id: int
+    class Config:
+        orm_mode = True
+
+class AboutResponse(BaseModel):
+    about: AboutBase
+    team: List[TeamMemberBase]
+
+class ImpactEventBase(BaseModel):
+    title: str
+    description: str
+    date: date
+
+class ImpactEventCreate(ImpactEventBase):
+    pass  # image is handled separately via UploadFile
+
+class ImpactEvent(ImpactEventBase):
+    id: int
+    image_filename: Optional[HttpUrl] = None  # ✅ Full image URL
+
+    class Config:
+        orm_mode = True
