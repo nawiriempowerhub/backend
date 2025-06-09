@@ -262,3 +262,27 @@ class ImpactEvent(ImpactEventBase):
 
     class Config:
         orm_mode = True
+        
+class PaymentMethod(str, enum.Enum):
+    mpesa = "M-Pesa"
+    card = "Card"
+    bank = "Bank"
+    cash = "Cash"
+    other = "Other"
+
+class DonationBase(BaseModel):
+    donor_name: Optional[str]
+    email: Optional[EmailStr]
+    phone_number: Optional[str]
+    amount: float
+    payment_method: Optional[PaymentMethod] = PaymentMethod.mpesa
+
+class DonationCreate(DonationBase):
+    pass
+
+class Donation(DonationBase):
+    id: int
+    created_at: datetime
+
+    class Config:
+        orm_mode = True

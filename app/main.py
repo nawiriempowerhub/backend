@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from app.routers import about
+from app.routers import about, donations
 from .database import engine, Base
 from .routers import auth, programs, media, contact, volunteers, events
 from fastapi.staticfiles import StaticFiles
@@ -26,6 +26,7 @@ app.include_router(contact.router)
 app.include_router(volunteers.router)
 app.include_router(events.router)
 app.include_router(about.router)
+app.include_router(donations.router)
 
 @app.get("/")
 def read_root():

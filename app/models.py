@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Boolean, Column, Date, Integer, String, Text, Enum, ForeignKey, DateTime, func
+from sqlalchemy import Boolean, Column, Date, Float, Integer, String, Text, Enum, ForeignKey, DateTime, func
 from sqlalchemy.orm import relationship
 from .database import Base
 import enum
@@ -128,4 +128,22 @@ class Event(Base):
     date = Column(DateTime(timezone=True))
     location = Column(String)
     description = Column(Text)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+class PaymentMethod(str, enum.Enum):
+    mpesa = "M-Pesa"
+    card = "Card"
+    bank = "Bank"
+    cash = "Cash"
+    other = "Other"
+
+class Donation(Base):
+    __tablename__ = "donations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    donor_name = Column(String, nullable=True)
+    email = Column(String, nullable=True)
+    amount = Column(Float, nullable=False)
+    payment_method = Column(Enum(PaymentMethod), default="M-Pesa")
+    phone_number = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
