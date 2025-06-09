@@ -12,8 +12,13 @@ from app.dependencies import get_current_active_user
 
 router = APIRouter(prefix="/api/about", tags=["About"])
 
+
 @router.post("/", response_model=schemas.About)
-def create_about(data: schemas.AboutCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_user)):
+def create_about(
+    data: schemas.AboutCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user),
+):
     if current_user.role != models.UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="Unauthorized")
     about = models.About(**data.dict())
@@ -22,6 +27,7 @@ def create_about(data: schemas.AboutCreate, db: Session = Depends(get_db), curre
     db.refresh(about)
     return about
 
+
 @router.get("/", response_model=schemas.About)
 def get_about(db: Session = Depends(get_db)):
     about = db.query(models.About).first()
@@ -29,8 +35,13 @@ def get_about(db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="About info not found")
     return about
 
+
 @router.put("/", response_model=schemas.About)
-def update_about(data: schemas.AboutUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_user)):
+def update_about(
+    data: schemas.AboutUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user),
+):
     if current_user.role != models.UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="Unauthorized")
     about = db.query(models.About).first()
@@ -41,6 +52,7 @@ def update_about(data: schemas.AboutUpdate, db: Session = Depends(get_db), curre
     db.commit()
     db.refresh(about)
     return about
+
 
 @router.post("/team", response_model=schemas.TeamMember)
 def add_team_member(
@@ -82,6 +94,7 @@ def get_team_members(db: Session = Depends(get_db)):
     members = db.query(models.TeamMember).all()
     return members  # Just return the DB model, Pydantic will serialize
 
+
 @router.put("/team/{member_id}", response_model=schemas.TeamMember)
 def update_team_member(
     member_id: int,
@@ -95,7 +108,9 @@ def update_team_member(
     if current_user.role != models.UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="Unauthorized")
 
-    member = db.query(models.TeamMember).filter(models.TeamMember.id == member_id).first()
+    member = (
+        db.query(models.TeamMember).filter(models.TeamMember.id == member_id).first()
+    )
     if not member:
         raise HTTPException(status_code=404, detail="Team member not found")
 
@@ -119,6 +134,7 @@ def update_team_member(
     db.refresh(member)
     return member
 
+
 @router.delete("/team/{member_id}")
 def delete_team_member(
     member_id: int,
@@ -128,13 +144,17 @@ def delete_team_member(
     if current_user.role != models.UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="Unauthorized")
 
-    member = db.query(models.TeamMember).filter(models.TeamMember.id == member_id).first()
+    member = (
+        db.query(models.TeamMember).filter(models.TeamMember.id == member_id).first()
+    )
     if not member:
         raise HTTPException(status_code=404, detail="Team member not found")
 
     db.delete(member)
     db.commit()
     return {"detail": "Team member deleted successfully"}
+
+
 @router.post("/impact", response_model=schemas.ImpactEvent)
 def add_impact_event(
     title: str = Form(...),
@@ -143,12 +163,12 @@ def add_impact_event(
     image: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
-    request: Request = None  # For generating full URL
+    request: Request = None,
 ):
     if current_user.role != models.UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="Unauthorized")
 
-    # ✅ Save image to /static/impact
+    # Save image
     static_folder = "static/impact"
     os.makedirs(static_folder, exist_ok=True)
     filename = f"{uuid4().hex}_{image.filename}"
@@ -157,25 +177,29 @@ def add_impact_event(
     with open(filepath, "wb") as buffer:
         shutil.copyfileobj(image.file, buffer)
 
-    # ✅ Full URL for image
+    # ✅ Generate full image URL
     base_url = str(request.base_url).rstrip("/")
-    image_url = f"{base_url}/static/impact/{filename}"
+    image_url = f"{base_url}/static/impact/{filename}"  # This is now a full URL
 
-    # ✅ Save to DB
+    # ✅ Save full URL to DB
     db_event = models.ImpactEvent(
-        title=title,
-        description=description,
-        date=date,
-        image_filename=image_url
+        title=title, description=description, date=date, image_filename=image_url
     )
     db.add(db_event)
     db.commit()
     db.refresh(db_event)
+
     return db_event
 
+
 @router.get("/impact", response_model=List[schemas.ImpactEvent])
-def list_impact_events(db: Session = Depends(get_db)):
-    return db.query(models.ImpactEvent).all()
+def get_impact_events(request: Request, db: Session = Depends(get_db)):
+    impact_events = db.query(models.ImpactEvent).all()
+    base_url = request.base_url
+    for event in impact_events:
+        event.image_filename = str(base_url) + f"static/impact/{event.image_filename}"
+    return impact_events
+
 
 @router.put("/impact/{impact_id}", response_model=schemas.ImpactEvent)
 def update_impact_event(
@@ -185,6 +209,7 @@ def update_impact_event(
     image: UploadFile = File(None),
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
+    request: Request = None  # ✅ Inject FastAPI request to build full image URL
 ):
     if current_user.role != models.UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="Unauthorized")
@@ -205,7 +230,10 @@ def update_impact_event(
 
         with open(filepath, "wb") as buffer:
             shutil.copyfileobj(image.file, buffer)
-        event.image_filename = filename
+
+        # ✅ Generate full image URL for schema validation
+        base_url = str(request.base_url).rstrip("/")
+        event.image_filename = f"{base_url}/static/impact/{filename}"
 
     db.commit()
     db.refresh(event)
@@ -220,7 +248,9 @@ def delete_impact_event(
     if current_user.role != models.UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="Unauthorized")
 
-    event = db.query(models.ImpactEvent).filter(models.ImpactEvent.id == impact_id).first()
+    event = (
+        db.query(models.ImpactEvent).filter(models.ImpactEvent.id == impact_id).first()
+    )
     if not event:
         raise HTTPException(status_code=404, detail="Impact event not found")
 

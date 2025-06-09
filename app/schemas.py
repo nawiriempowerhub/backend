@@ -247,9 +247,11 @@ class AboutResponse(BaseModel):
     team: List[TeamMemberBase]
 
 class ImpactEventBase(BaseModel):
+    id: int
     title: str
     description: str
     date: date
+    image_filename: Optional[HttpUrl] = None  # ✅ Full image URL
 
 class ImpactEventCreate(ImpactEventBase):
     pass  # image is handled separately via UploadFile
