@@ -1,5 +1,5 @@
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, Response, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from app import models, schemas, services, dependencies
 from app.services import crud_service
@@ -25,12 +25,12 @@ def create_program(
         raise HTTPException(status_code=403, detail="Not authorized to create programs")
 
     image_filename = f"{datetime.utcnow().timestamp()}_{image.filename}"
-    image_path = f"static/{image_filename}"
-    os.makedirs("static", exist_ok=True)
+    image_path = f"static/programs/{image_filename}"
+    os.makedirs("static/programs", exist_ok=True)
     with open(image_path, "wb") as buffer:
         shutil.copyfileobj(image.file, buffer)
 
-    image_url = f"/static/{image_filename}"
+    image_url = f"/static/programs/{image_filename}"
 
     program_data = {
         "title": title,
@@ -93,6 +93,25 @@ def delete_program(
     if current_user.role != models.UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="Not authorized to delete programs")
 
-    deleted = crud_service.delete_item(db, model=models.Program, item_id=program_id)
-    if not deleted:
+    # Fetch program first to access image filename
+    program = db.query(models.Program).filter(models.Program.id == program_id).first()
+    if not program:
         raise HTTPException(status_code=404, detail=f"Program with id {program_id} not found")
+
+    # ✅ Delete image file from disk if it exists
+    if program.image_url:
+        try:
+            filename = os.path.basename(program.image_url)
+            image_path = os.path.join("static/programs", filename)  # adjust folder name
+            if os.path.exists(image_path):
+                print("Program image_url:", program.image_url)
+                print(f"Deleting program image: {image_path}")
+                os.remove(image_path)
+        except Exception as e:
+            print(f"Warning: Failed to delete program image: {e}")
+
+    # Delete the DB record
+    db.delete(program)
+    db.commit()
+
+    return Response(status_code=204)

@@ -1,5 +1,6 @@
+import os
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 from app import models, schemas, services
 from app.dependencies import get_db, get_current_active_user
@@ -135,13 +136,29 @@ def delete_media_item(
     current_user: models.User = Depends(get_current_active_user)
 ):
     """
-    Delete a media item record. Requires admin privileges.
+    Delete a media item record and its associated file. Requires admin privileges.
     """
     if current_user.role != models.UserRole.ADMIN:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to delete media")
-    
-    db_media = services.crud_service.delete_item(db, model=models.Media, item_id=media_id)
-    if not db_media:
+
+    # Fetch media record manually to get the image filename
+    media = db.query(models.Media).filter(models.Media.id == media_id).first()
+    if not media:
         raise HTTPException(status_code=404, detail="Media item not found")
-        
-    return
+
+    # ✅ Attempt to delete the file from disk
+    if media.file_url:
+        try:
+            filename = os.path.basename(media.file_url)
+            file_path = os.path.join("static/media", filename)
+            if os.path.exists(file_path):
+                print(f"Deleting media file: {file_path}")
+                os.remove(file_path)
+        except Exception as e:
+            print(f"Warning: Failed to delete media file: {e}")
+
+    # Delete the database record
+    db.delete(media)
+    db.commit()
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

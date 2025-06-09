@@ -144,15 +144,25 @@ def delete_team_member(
     if current_user.role != models.UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="Unauthorized")
 
-    member = (
-        db.query(models.TeamMember).filter(models.TeamMember.id == member_id).first()
-    )
+    member = db.query(models.TeamMember).filter(models.TeamMember.id == member_id).first()
     if not member:
         raise HTTPException(status_code=404, detail="Team member not found")
+
+    # ✅ Delete image file from disk if exists
+    if member.photo_filename:
+        try:
+            filename = os.path.basename(member.photo_filename)
+            image_path = os.path.join("static/team", filename)
+            if os.path.exists(image_path):
+                print(f"Deleting team member photo file: {image_path}")
+                os.remove(image_path)
+        except Exception as e:
+            print(f"Warning: failed to delete team member photo file: {e}")
 
     db.delete(member)
     db.commit()
     return {"detail": "Team member deleted successfully"}
+
 
 
 @router.post("/impact", response_model=schemas.ImpactEvent)
@@ -248,11 +258,21 @@ def delete_impact_event(
     if current_user.role != models.UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="Unauthorized")
 
-    event = (
-        db.query(models.ImpactEvent).filter(models.ImpactEvent.id == impact_id).first()
-    )
+    event = db.query(models.ImpactEvent).filter(models.ImpactEvent.id == impact_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Impact event not found")
+
+    # ✅ Delete image file from disk if exists
+    if event.image_filename:
+        try:
+            # Extract actual filename from full URL
+            filename = os.path.basename(event.image_filename)
+            image_path = os.path.join("static/impact", filename)
+            if os.path.exists(image_path):
+                print(f"Deleting image file: {image_path}")
+                os.remove(image_path)
+        except Exception as e:
+            print(f"Warning: failed to delete image file: {e}")
 
     db.delete(event)
     db.commit()
