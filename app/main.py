@@ -1,4 +1,6 @@
 from fastapi import FastAPI
+from starlette.middleware.cors import CORSMiddleware  # ✅ Correct
+
 
 from app.routers import about, donations
 from .database import engine, Base
@@ -18,6 +20,21 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# Allow frontend origin
+origins = [
+    "http://localhost:5173",         # For local Vite dev server
+    "http://127.0.0.1:5173",         # Alternative localhost IP
+    # Add other origins if deploying
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,            # Accept requests from these origins
+    allow_credentials=True,
+    allow_methods=["*"],              # Allow all HTTP methods
+    allow_headers=["*"],              # Allow all headers
+)
+
 # Include all the routers
 app.include_router(auth.router)
 app.include_router(programs.router)
@@ -32,4 +49,6 @@ app.include_router(donations.router)
 def read_root():
     return {"message": "Welcome to the Nawiri EmpowerHub API"}
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
+# Ensure path is correct relative to this file
+static_path = os.path.join(os.path.dirname(__file__), "static")
+app.mount("/api/static", StaticFiles(directory=static_path), name="static")
