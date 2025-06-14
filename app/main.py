@@ -1,12 +1,15 @@
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware  # ✅ Correct
+from dotenv import load_dotenv
 
-
-from app.routers import about, donations
+from app.routers import about, donations, submission
 from .database import engine, Base
 from .routers import auth, programs, media, contact, volunteers, events
 from fastapi.staticfiles import StaticFiles
 import os
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -44,6 +47,7 @@ app.include_router(volunteers.router)
 app.include_router(events.router)
 app.include_router(about.router)
 app.include_router(donations.router)
+# app.include_router(submission.router, prefix="/api")
 
 @app.get("/")
 def read_root():

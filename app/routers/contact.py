@@ -1,8 +1,10 @@
+from datetime import datetime
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app import models, schemas, services
 from app.dependencies import get_db, get_current_active_user
+from app.utils.email import send_notification
 
 router = APIRouter(
     prefix="/api/contact",
@@ -10,11 +12,33 @@ router = APIRouter(
 )
 
 @router.post("", response_model=schemas.ContactSubmission, status_code=status.HTTP_201_CREATED)
-def submit_contact_form(contact: schemas.ContactSubmissionCreate, db: Session = Depends(get_db)):
-    """
-    Submit a contact form. This is a public endpoint.
-    """
-    return services.crud_service.create_item(db=db, model=models.ContactSubmission, item=contact)
+async def submit_contact_form(contact: schemas.ContactSubmissionCreate, db: Session = Depends(get_db)):
+    try:
+        saved_contact = services.crud_service.create_item(
+            db=db,
+            model=models.ContactSubmission,
+            item=contact
+        )
+
+        body = f"""
+        New Contact Form Submission
+
+        Name: {contact.name}
+        Email: {contact.email}
+        Message: {contact.message}
+        Submitted at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+        """
+
+        try:
+            await send_notification(subject="New Contact Form Submission", body=body)
+        except Exception as email_error:
+            print(f"[Email Error] {email_error}")
+
+        return saved_contact
+
+    except Exception as e:
+        print(f"[API Error] {e}")
+        raise HTTPException(status_code=500, detail=f"Submission failed: {str(e)}")
 
 @router.get("", response_model=List[schemas.ContactSubmission])
 def view_contact_submissions(

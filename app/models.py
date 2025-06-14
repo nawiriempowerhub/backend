@@ -109,6 +109,7 @@ class ContactSubmission(Base):
     name = Column(String)
     email = Column(String)
     message = Column(Text)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 class Volunteer(Base):
@@ -129,7 +130,20 @@ class Event(Base):
     location = Column(String)
     description = Column(Text)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    
+  
+class EventRegistration(Base):
+    __tablename__ = "event_registrations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    email = Column(String, nullable=False)
+    event_id = Column(Integer, ForeignKey("events.id"))
+
+    event = relationship("Event", back_populates="registrations")
+
+# In your Event model, add:
+Event.registrations = relationship("EventRegistration", back_populates="event", cascade="all, delete")
+  
 class PaymentMethod(str, enum.Enum):
     mpesa = "M-Pesa"
     card = "Card"

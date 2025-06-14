@@ -1,8 +1,10 @@
+from datetime import datetime
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app import models, schemas, services
 from app.dependencies import get_db, get_current_active_user
+from app.utils.email import send_notification
 
 router = APIRouter(
     prefix="/api/volunteers",
@@ -10,11 +12,33 @@ router = APIRouter(
 )
 
 @router.post("", response_model=schemas.Volunteer, status_code=status.HTTP_201_CREATED)
-def submit_volunteer_application(volunteer: schemas.VolunteerCreate, db: Session = Depends(get_db)):
+async def submit_volunteer_application(volunteer: schemas.VolunteerCreate, db: Session = Depends(get_db)):
     """
-    Submit a volunteer application form. Public endpoint.
+    Submit a volunteer application form. Saves to DB and sends email notification.
     """
-    return services.crud_service.create_item(db=db, model=models.Volunteer, item=volunteer)
+    try:
+        # Save to DB
+        saved = services.crud_service.create_item(
+            db=db, model=models.Volunteer, item=volunteer
+        )
+
+        # Send email
+        body = f"""
+        New Volunteer Application
+        Name: {volunteer.name}
+        Email: {volunteer.email}
+        Phone: {volunteer.phone or 'Not provided'}
+        Motivation: {volunteer.motivation or 'Not provided'}
+        Submitted at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+        """
+        await send_notification(
+            subject="New Volunteer Application",
+            body=body
+        )
+
+        return saved
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Submission failed: {str(e)}")
 
 @router.get("", response_model=List[schemas.Volunteer])
 def view_all_volunteer_applications(

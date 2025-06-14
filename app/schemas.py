@@ -140,18 +140,18 @@ class ContactSubmission(ContactSubmissionBase):
 # 🧾 Volunteer Schemas
 # ==============================================================================
 
-class VolunteerBase(BaseModel):
+class VolunteerForm(BaseModel):
     """Base schema for volunteer applications."""
     name: str
     email: EmailStr
     phone: str
     motivation: str
 
-class VolunteerCreate(VolunteerBase):
+class VolunteerCreate(VolunteerForm):
     """Schema for creating a new volunteer application."""
     pass
 
-class Volunteer(VolunteerBase):
+class Volunteer(VolunteerForm):
     """Schema for returning volunteer application data in responses."""
     id: int
     status: VolunteerStatus
@@ -187,6 +187,21 @@ class Event(EventBase):
     class Config:
         orm_mode = True
 
+
+class EventRegistrationBase(BaseModel):
+    name: str
+    email: EmailStr
+
+class EventRegistrationCreate(EventRegistrationBase):
+    event_id: int
+
+class EventRegistrationResponse(EventRegistrationBase):
+    id: int
+    event_id: int
+
+    class Config:
+        orm_mode = True
+        
 # ==============================================================================
 # 🔑 Authentication Token Schemas
 # ==============================================================================
@@ -286,3 +301,18 @@ class Donation(DonationBase):
 
     class Config:
         orm_mode = True
+        
+
+
+
+class DonationForm(BaseModel):
+    donor_name: str
+    email: EmailStr
+    amount: float
+    phone: Optional[str]
+    payment_method: str
+
+class EventRegistrationForm(BaseModel):
+    name: str
+    email: EmailStr
+    event_id: int

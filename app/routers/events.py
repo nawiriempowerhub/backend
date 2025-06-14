@@ -1,8 +1,10 @@
+from datetime import datetime
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app import models, schemas, services
 from app.dependencies import get_db, get_current_active_user
+from app.utils.email import send_notification
 
 router = APIRouter(
     prefix="/api/events",
@@ -72,3 +74,55 @@ def delete_event(
         raise HTTPException(status_code=404, detail="Event not found")
         
     return
+
+@router.post("/register", response_model=schemas.EventRegistrationResponse, status_code=status.HTTP_201_CREATED)
+async def register_for_event(
+    registration: schemas.EventRegistrationCreate,
+    db: Session = Depends(get_db)
+):
+    """
+    Public route: Register for an event (no authentication required).
+    Sends email notification upon successful registration.
+    """
+    # Check if event exists
+    event = db.query(models.Event).filter(models.Event.id == registration.event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    # Save registration to DB
+    new_registration = models.EventRegistration(
+        name=registration.name,
+        email=registration.email,
+        event_id=registration.event_id
+    )
+    db.add(new_registration)
+    db.commit()
+    db.refresh(new_registration)
+
+    # Send email notification
+    try:
+        body = f"""
+        New Event Registration
+        Name: {registration.name}
+        Email: {registration.email}
+        Event: {event.title}
+        Registered at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+        """
+        await send_notification(
+            subject="New Event Registration",
+            body=body
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Email sending failed: {str(e)}")
+
+    return new_registration
+
+@router.get("/{event_id}", response_model=schemas.Event)
+def get_event_by_id(event_id: int, db: Session = Depends(get_db)):
+    """
+    Retrieve a single event by its ID. Public endpoint.
+    """
+    event = db.query(models.Event).filter(models.Event.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    return event
