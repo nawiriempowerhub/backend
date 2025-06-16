@@ -288,7 +288,7 @@ class PaymentMethod(str, enum.Enum):
 class DonationBase(BaseModel):
     donor_name: Optional[str]
     email: Optional[EmailStr]
-    phone_number: Optional[str]
+    donor_phone: str
     amount: float
     payment_method: Optional[PaymentMethod] = PaymentMethod.mpesa
 
@@ -305,12 +305,12 @@ class Donation(DonationBase):
 
 
 
-class DonationForm(BaseModel):
-    donor_name: str
-    email: EmailStr
-    amount: float
-    phone: Optional[str]
-    payment_method: str
+# class DonationForm(BaseModel):
+#     donor_name: str
+#     email: EmailStr
+#     amount: float
+#     phone: Optional[str]
+#     payment_method: str
 
 class EventRegistrationForm(BaseModel):
     name: str

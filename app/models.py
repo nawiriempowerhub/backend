@@ -144,12 +144,9 @@ class EventRegistration(Base):
 # In your Event model, add:
 Event.registrations = relationship("EventRegistration", back_populates="event", cascade="all, delete")
   
-class PaymentMethod(str, enum.Enum):
-    mpesa = "M-Pesa"
-    card = "Card"
-    bank = "Bank"
-    cash = "Cash"
-    other = "Other"
+# class PaymentMethod(str, enum.Enum):
+#     mpesa = "M-Pesa"
+
 
 class Donation(Base):
     __tablename__ = "donations"
@@ -158,6 +155,6 @@ class Donation(Base):
     donor_name = Column(String, nullable=True)
     email = Column(String, nullable=True)
     amount = Column(Float, nullable=False)
-    payment_method = Column(Enum(PaymentMethod), default="M-Pesa")
-    phone_number = Column(String, nullable=True)
+    # payment_method = Column(Enum(PaymentMethod), default="M-Pesa")
+    donor_phone = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

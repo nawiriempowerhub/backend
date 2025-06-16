@@ -67,7 +67,8 @@ def add_team_member(
         raise HTTPException(status_code=403, detail="Unauthorized")
 
     # Save uploaded photo in static/team/
-    static_folder = "static/team"
+    BASE_DIR = os.path.dirname(os.path.dirname(__file__))  # go up one level from routers
+    static_folder = os.path.join(BASE_DIR, "static", "team")
     os.makedirs(static_folder, exist_ok=True)
 
     filename = f"{uuid4().hex}_{photo.filename}"
@@ -121,11 +122,14 @@ def update_team_member(
     if bio:
         member.bio = bio
     if photo:
-        static_folder = "static/team"
+        BASE_DIR = os.path.dirname(os.path.dirname(__file__))  # go up one level from routers
+        static_folder = os.path.join(BASE_DIR, "static", "team")
         os.makedirs(static_folder, exist_ok=True)
         filename = f"{uuid4().hex}_{photo.filename}"
         filepath = os.path.join(static_folder, filename)
+        print(f"Saving to: {filepath}")
 
+ 
         with open(filepath, "wb") as buffer:
             shutil.copyfileobj(photo.file, buffer)
         member.photo_filename = filename
@@ -152,7 +156,7 @@ def delete_team_member(
     if member.photo_filename:
         try:
             filename = os.path.basename(member.photo_filename)
-            image_path = os.path.join("static/team", filename)
+            image_path = os.path.join(os.path.dirname(__file__), "static", "team", filename)
             if os.path.exists(image_path):
                 print(f"Deleting team member photo file: {image_path}")
                 os.remove(image_path)
