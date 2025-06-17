@@ -1,7 +1,7 @@
 from pydantic import BaseModel, EmailStr, Field, HttpUrl
 from typing import List, Optional
 from datetime import datetime
-
+import enum
 from datetime import date
 from .models import UserRole, ProgramCategory, MediaType, VolunteerStatus
 
@@ -97,12 +97,6 @@ class Media(MediaBase):
 class MediaProgramUpdate(BaseModel):
     program_id: Optional[int]
     
-from typing import Optional
-from pydantic import BaseModel
-import enum
-
-   
-
 class MediaUpdate(BaseModel):
     title: Optional[str]
     description: Optional[str]
