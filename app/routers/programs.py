@@ -1,13 +1,20 @@
+import os
+import shutil
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, Response, UploadFile, File, Form
+from datetime import datetime
+from fastapi import (
+    APIRouter, Depends, HTTPException, Response, UploadFile, File, Form
+)
 from sqlalchemy.orm import Session
 from app import models, schemas, services, dependencies
 from app.services import crud_service
-import shutil
-import os
-from datetime import datetime
+from app.utils.slugify import slugify  # You need to implement or install this
 
 router = APIRouter(tags=["Programs"])
+
+ # Save uploaded photo in static/media/
+BASE_DIR = os.path.dirname(os.path.dirname(__file__))  # go up one level from routers
+static_folder = os.path.join(BASE_DIR, "static", "programs")
 
 # ----------------------
 # Create Program (with image upload)
@@ -17,6 +24,11 @@ def create_program(
     title: str = Form(...),
     description: str = Form(...),
     category: str = Form(...),
+    objectives: str = Form(None),
+    target_group: str = Form(None),
+    start_date: str = Form(None),
+    end_date: str = Form(None),
+    status: str = Form("Ongoing"),
     image: UploadFile = File(...),
     db: Session = Depends(dependencies.get_db),
     current_user: models.User = Depends(dependencies.get_current_active_user)
@@ -24,23 +36,30 @@ def create_program(
     if current_user.role != models.UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="Not authorized to create programs")
 
-    image_filename = f"{datetime.utcnow().timestamp()}_{image.filename}"
-    image_path = f"static/programs/{image_filename}"
-    os.makedirs("static/programs", exist_ok=True)
+    filename = f"{datetime.utcnow().timestamp()}_{image.filename}"
+    image_path = os.path.join(static_folder, filename)
+
     with open(image_path, "wb") as buffer:
         shutil.copyfileobj(image.file, buffer)
 
-    image_url = f"/static/programs/{image_filename}"
+    image_url = f"/{image_path}"
+
+    slug = slugify(title)
 
     program_data = {
         "title": title,
+        "slug": slug,
         "description": description,
         "category": category,
-        "image_url": image_url,
+        "objectives": objectives,
+        "target_group": target_group,
+        "start_date": start_date,
+        "end_date": end_date,
+        "status": status,
+        "featured_image_url": image_url,
     }
 
     return crud_service.create_item(db=db, model=models.Program, item=program_data)
-
 
 # ----------------------
 # Get All Programs
@@ -48,7 +67,6 @@ def create_program(
 @router.get("/api/programs", response_model=List[schemas.Program])
 def read_programs(skip: int = 0, limit: int = 100, db: Session = Depends(dependencies.get_db)):
     return crud_service.get_items(db, model=models.Program, skip=skip, limit=limit)
-
 
 # ----------------------
 # Get Program by ID
@@ -59,7 +77,6 @@ def read_program(program_id: int, db: Session = Depends(dependencies.get_db)):
     if not program:
         raise HTTPException(status_code=404, detail="Program not found")
     return program
-
 
 # ----------------------
 # Update Program by ID
@@ -74,12 +91,15 @@ def update_program(
     if current_user.role != models.UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="Not authorized to update programs")
 
-    existing_program = crud_service.get_item(db, model=models.Program, item_id=program_id)
-    if not existing_program:
+    existing = crud_service.get_item(db, model=models.Program, item_id=program_id)
+    if not existing:
         raise HTTPException(status_code=404, detail="Program not found")
 
-    return crud_service.update_item(db, model=models.Program, item_id=program_id, update_data=updated_program.dict())
+    update_data = updated_program.dict(exclude_unset=True)
+    if "title" in update_data:
+        update_data["slug"] = slugify(update_data["title"])
 
+    return crud_service.update_item(db, model=models.Program, item_id=program_id, update_data=update_data)
 
 # ----------------------
 # Delete Program by ID
@@ -93,25 +113,19 @@ def delete_program(
     if current_user.role != models.UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="Not authorized to delete programs")
 
-    # Fetch program first to access image filename
     program = db.query(models.Program).filter(models.Program.id == program_id).first()
     if not program:
         raise HTTPException(status_code=404, detail=f"Program with id {program_id} not found")
 
-    # ✅ Delete image file from disk if it exists
-    if program.image_url:
+    if program.featured_image_url:
         try:
-            filename = os.path.basename(program.image_url)
-            image_path = os.path.join("static/programs", filename)  # adjust folder name
+            filename = os.path.basename(program.featured_image_url)
+            image_path = os.path.join(static_folder, filename)
             if os.path.exists(image_path):
-                print("Program image_url:", program.image_url)
-                print(f"Deleting program image: {image_path}")
                 os.remove(image_path)
         except Exception as e:
             print(f"Warning: Failed to delete program image: {e}")
 
-    # Delete the DB record
     db.delete(program)
     db.commit()
-
     return Response(status_code=204)

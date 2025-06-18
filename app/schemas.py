@@ -1,3 +1,5 @@
+from fastapi import UploadFile
+from fastapi.params import File
 from pydantic import BaseModel, EmailStr, Field, HttpUrl
 from typing import List, Optional
 from datetime import datetime
@@ -44,68 +46,93 @@ class Token(BaseModel):
 # 📚 Program Schemas
 # ==============================================================================
 
+
 class ProgramBase(BaseModel):
     """Base schema for program details."""
     title: str
-    description: str
-    category: ProgramCategory
-   
+    slug: Optional[str] = None  # Include if generated or manually entered
+    description: Optional[str] = None
+    objectives: Optional[str] = None
+    target_group: Optional[str] = None
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+    status: Optional[str] = "Ongoing"
+    featured_image_url: Optional[str] = None
+    category: Optional[ProgramCategory] = None  # Optional if your DB doesn't enforce it
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
 
 class ProgramCreate(ProgramBase):
     """Schema for creating a new program."""
     pass
 
+
 class ProgramUpdate(BaseModel):
+    """Schema for updating an existing program."""
     title: Optional[str] = None
+    slug: Optional[str] = None
     description: Optional[str] = None
-    category: Optional[str] = None
-    image_url: Optional[str] = None
+    objectives: Optional[str] = None
+    target_group: Optional[str] = None
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+    status: Optional[str] = None
+    featured_image_url: Optional[str] = None
+    category: Optional[ProgramCategory] = None
+    # created_at: Optional[datetime] = None
+    # updated_at: Optional[datetime] = None
+
+
 
 class Program(ProgramBase):
     """Schema for returning program data in responses."""
     id: int
-    image_url: str
-    created_at: datetime
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None   
 
     class Config:
         orm_mode = True
-
 # ==============================================================================
 # 🖼️ Media Schemas
 # ==============================================================================
 
 class MediaBase(BaseModel):
-    """Base schema for media items."""
     title: str
     type: MediaType
-    file_url: Optional[HttpUrl] = None
-    program_id: Optional[int] = None
     description: Optional[str] = None
+    file_url: Optional[str] = None
+    external_link: Optional[str] = None
+    program_id: Optional[int] = None
+    is_featured: Optional[bool] = False
+    created_at: datetime
 
+# For creating media (in API, you'll handle file separately)
 class MediaCreate(MediaBase):
-    """Schema for creating a new media item record."""
-    pass
+    pass  # You can remove this if it's identical to MediaBase
 
+# Response model
 class Media(MediaBase):
-    """Schema for returning media item data in responses."""
     id: int
     created_at: datetime
 
     class Config:
         orm_mode = True
 
+# For updating program_id only
 class MediaProgramUpdate(BaseModel):
     program_id: Optional[int]
-    
+
+# For updating any field
 class MediaUpdate(BaseModel):
     title: Optional[str]
     description: Optional[str]
     type: Optional[MediaType]
-    file_url: Optional[str]
-    external_link: Optional[str]
+    file_url: Optional[HttpUrl]
+    external_link: Optional[HttpUrl]
     is_featured: Optional[bool]
     tags: Optional[str]
-    program_id: Optional[int]  # Optional: still allow updating program too
+    program_id: Optional[int]
 
     
 # ==============================================================================

@@ -7,9 +7,9 @@ import enum
 
 class UserRole(str, enum.Enum):
     ADMIN = "ADMIN"
-    VOLUNTEER = "VOLUNTEER"
-    PARTNER = "PARTNER"
-    USER = "USER"  # Add this only if your DB also has 'USER'
+    # VOLUNTEER = "VOLUNTEER"
+    # PARTNER = "PARTNER"
+    # USER = "USER"  # Add this only if your DB also has 'USER'
 
 # models/about.py
 from sqlalchemy import Column, Integer, String, Text, Date
@@ -75,33 +75,42 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-
 class Program(Base):
     __tablename__ = "programs"
+
     id = Column(Integer, primary_key=True, index=True)
-    title = Column(String, index=True)
+    title = Column(String, nullable=False, index=True)
+    slug = Column(String, unique=True, index=True)
     description = Column(Text)
-    category = Column(Enum(ProgramCategory))
-    image_url = Column(String, nullable=False)  # store image path like /static/img.png
+    objectives = Column(Text)
+    target_group = Column(String)
+    start_date = Column(Date)
+    end_date = Column(Date, nullable=True)
+    status = Column(String, default="Ongoing")  # You can use Enum if status is fixed set
+    category = Column(Enum(ProgramCategory), nullable=True)
+    featured_image_url = Column(String)  # Rename from image_url for clarity
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())
+    
     media = relationship("Media", back_populates="program")
 
 class Media(Base):
     __tablename__ = "media"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, nullable=False)
     description = Column(Text, nullable=True)
     type = Column(Enum(MediaType), nullable=False)
-    file_url = Column(String, nullable=True)
-    external_link = Column(String, nullable=True)
+
+    file_url = Column(String, nullable=True)  # For uploaded file path (photo/video)
+    external_link = Column(String, nullable=True)  # For YouTube or cloud-hosted videos
+
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     is_featured = Column(Boolean, default=False)
-    tags = Column(Text, nullable=True)  # Optional tags (comma-separated)
-    program_id = Column(Integer, ForeignKey('programs.id'))  # <-- Foreign key defined here
-    program = relationship("Program", back_populates="media")
 
+    program_id = Column(Integer, ForeignKey('programs.id'))
+    program = relationship("Program", back_populates="media")
 
 class ContactSubmission(Base):
     __tablename__ = "contact_submissions"
