@@ -52,8 +52,8 @@ class ProgramBase(BaseModel):
     title: str
     slug: Optional[str] = None  # Include if generated or manually entered
     description: Optional[str] = None
-    objectives: Optional[str] = None
-    target_group: Optional[str] = None
+    objectives: Optional[List[str]] = None
+    target_group: Optional[List[str]] = None
     start_date: Optional[date] = None
     end_date: Optional[date] = None
     status: Optional[str] = "Ongoing"
@@ -73,8 +73,8 @@ class ProgramUpdate(BaseModel):
     title: Optional[str] = None
     slug: Optional[str] = None
     description: Optional[str] = None
-    objectives: Optional[str] = None
-    target_group: Optional[str] = None
+    objectives: Optional[List[str]] = None
+    target_group: Optional[List[str]] = None
     start_date: Optional[date] = None
     end_date: Optional[date] = None
     status: Optional[str] = None
@@ -226,11 +226,6 @@ class EventRegistrationResponse(EventRegistrationBase):
 # ==============================================================================
 # 🔑 Authentication Token Schemas
 # ==============================================================================
-
-class Token(BaseModel):
-    """Schema for the access token response."""
-    access_token: str
-    token_type: str
 
 class TokenData(BaseModel):
     """Schema for the data encoded within the JWT."""

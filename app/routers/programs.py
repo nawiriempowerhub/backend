@@ -1,12 +1,12 @@
 import os
 import shutil
-from typing import List
+from typing import Annotated, List
 from datetime import datetime
 from fastapi import (
     APIRouter, Depends, HTTPException, Response, UploadFile, File, Form
 )
 from sqlalchemy.orm import Session
-from app import models, schemas, services, dependencies
+from app import models, schemas, dependencies
 from app.services import crud_service
 from app.utils.slugify import slugify  # You need to implement or install this
 
@@ -19,13 +19,13 @@ static_folder = os.path.join(BASE_DIR, "static", "programs")
 # ----------------------
 # Create Program (with image upload)
 # ----------------------
-@router.post("/api/programs", response_model=schemas.Program, status_code=201)
+@router.post("/api/programs", response_model=schemas.ProgramBase, status_code=201)
 def create_program(
     title: str = Form(...),
     description: str = Form(...),
     category: str = Form(...),
-    objectives: str = Form(None),
-    target_group: str = Form(None),
+    objectives: Annotated[List[str], Form()] = [],
+    target_group: Annotated[List[str], Form()] = [],
     start_date: str = Form(None),
     end_date: str = Form(None),
     status: str = Form("Ongoing"),
@@ -45,6 +45,11 @@ def create_program(
     image_url = f"/{image_path}"
 
     slug = slugify(title)
+    
+    # if isinstance(objectives, str):
+    #     objectives = parse_list_input(objectives)
+    # if isinstance(target_group, str):
+    #     target_group = parse_list_input(target_group)
 
     program_data = {
         "title": title,

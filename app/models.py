@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Boolean, Column, Date, Float, Integer, String, Text, Enum, ForeignKey, DateTime, func
+from sqlalchemy import Boolean, Column, Date, Float, Integer, String, Text, Enum, ForeignKey, DateTime, func, ARRAY
 from sqlalchemy.orm import relationship
 from .database import Base
 import enum
@@ -82,8 +82,8 @@ class Program(Base):
     title = Column(String, nullable=False, index=True)
     slug = Column(String, unique=True, index=True)
     description = Column(Text)
-    objectives = Column(Text)
-    target_group = Column(String)
+    objectives = Column(ARRAY(Text), nullable=True)
+    target_group = Column(ARRAY(Text), nullable=True)
     start_date = Column(Date)
     end_date = Column(Date, nullable=True)
     status = Column(String, default="Ongoing")  # You can use Enum if status is fixed set

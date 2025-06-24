@@ -113,7 +113,7 @@ async def register_for_event(
             body=body
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Email sending failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Email sending failed: {str(e)}") from e
 
     return new_registration
 
