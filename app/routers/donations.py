@@ -2,7 +2,7 @@
 import base64
 from datetime import datetime
 import os
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 import requests
 from sqlalchemy.orm import Session
 from typing import List
