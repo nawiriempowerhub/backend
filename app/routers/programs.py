@@ -19,7 +19,7 @@ static_folder = os.path.join(BASE_DIR, "static", "programs")
 # ----------------------
 # Create Program (with image upload)
 # ----------------------
-@router.post("/api/programs", response_model=schemas.ProgramBase, status_code=201)
+@router.post("/programs", response_model=schemas.ProgramBase, status_code=201)
 def create_program(
     title: str = Form(...),
     description: str = Form(...),
@@ -69,7 +69,7 @@ def create_program(
 # ----------------------
 # Get All Programs
 # ----------------------
-@router.get("/api/programs", response_model=List[schemas.Program])
+@router.get("/programs", response_model=List[schemas.Program])
 def read_programs(skip: int = 0, limit: int = 100, db: Session = Depends(dependencies.get_db)):
     return crud_service.get_items(db, model=models.Program, skip=skip, limit=limit)
 
@@ -86,7 +86,7 @@ def read_program(program_id: int, db: Session = Depends(dependencies.get_db)):
 # ----------------------
 # Update Program by ID
 # ----------------------
-@router.put("/api/programs/{program_id}", response_model=schemas.Program)
+@router.put("/programs/{program_id}", response_model=schemas.Program)
 def update_program(
     program_id: int,
     updated_program: schemas.ProgramUpdate,
@@ -109,7 +109,7 @@ def update_program(
 # ----------------------
 # Delete Program by ID
 # ----------------------
-@router.delete("/api/programs/{program_id}", status_code=204)
+@router.delete("/programs/{program_id}", status_code=204)
 def delete_program(
     program_id: int,
     db: Session = Depends(dependencies.get_db),

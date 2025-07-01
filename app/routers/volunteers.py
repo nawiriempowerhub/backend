@@ -7,7 +7,7 @@ from app.dependencies import get_db, get_current_active_user
 from app.utils.email import send_notification
 
 router = APIRouter(
-    prefix="/api/volunteers",
+    prefix="/volunteers",
     tags=["Volunteer Applications"],
 )
 

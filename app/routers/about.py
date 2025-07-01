@@ -10,7 +10,7 @@ from app import models, schemas
 from app.database import get_db
 from app.dependencies import get_current_active_user
 
-router = APIRouter(prefix="/api/about", tags=["About"])
+router = APIRouter(prefix="/about", tags=["About"])
 
 
 @router.post("/", response_model=schemas.About)
