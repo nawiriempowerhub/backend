@@ -8,7 +8,7 @@ router = APIRouter()
 class STKCallbackData(BaseModel):
     Body: dict
 
-@router.post("/api/mpesa/callback")
+@router.post("/mpesa/callback")
 async def mpesa_callback(data: STKCallbackData):
     # Safaricom posts data under 'Body'
     result = data.Body.get("stkCallback", {})

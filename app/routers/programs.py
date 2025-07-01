@@ -76,7 +76,7 @@ def read_programs(skip: int = 0, limit: int = 100, db: Session = Depends(depende
 # ----------------------
 # Get Program by ID
 # ----------------------
-@router.get("/api/programs/{program_id}", response_model=schemas.Program)
+@router.get("/programs/{program_id}", response_model=schemas.Program)
 def read_program(program_id: int, db: Session = Depends(dependencies.get_db)):
     program = crud_service.get_item(db, model=models.Program, item_id=program_id)
     if not program:

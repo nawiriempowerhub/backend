@@ -28,7 +28,7 @@ def get_access_token():
     )
     return response.json()["access_token"]
 
-@router.post("/api/stk_push")
+@router.post("/stk_push")
 def stk_push(data: STKPushRequest):
     access_token = get_access_token()
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")

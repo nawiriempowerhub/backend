@@ -13,7 +13,7 @@ from app.dependencies import get_current_active_user
 router = APIRouter(prefix="/about", tags=["About"])
 
 
-@router.post("/", response_model=schemas.About)
+@router.post("", response_model=schemas.About)
 def create_about(
     data: schemas.AboutCreate,
     db: Session = Depends(get_db),
@@ -28,7 +28,7 @@ def create_about(
     return about
 
 
-@router.get("/", response_model=schemas.About)
+@router.get("", response_model=schemas.About)
 def get_about(db: Session = Depends(get_db)):
     about = db.query(models.About).first()
     if not about:
@@ -36,7 +36,7 @@ def get_about(db: Session = Depends(get_db)):
     return about
 
 
-@router.put("/", response_model=schemas.About)
+@router.put("", response_model=schemas.About)
 def update_about(
     data: schemas.AboutUpdate,
     db: Session = Depends(get_db),

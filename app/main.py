@@ -57,4 +57,4 @@ def read_root():
 
 # Ensure path is correct relative to this file
 static_path = os.path.join(os.path.dirname(__file__), "static")
-app.mount("/api/static", StaticFiles(directory=static_path), name="static")
+app.mount("/static", StaticFiles(directory=static_path), name="static")

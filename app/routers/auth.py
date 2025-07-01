@@ -7,7 +7,7 @@ from app.services import auth_service
 
 router = APIRouter(tags=["Authentication"])
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/users/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/users/login")
 
 
 # ✅ Register new user
