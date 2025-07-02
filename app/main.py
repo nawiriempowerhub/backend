@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 
 from app.routers import about, donations
 from .database import engine, Base
-from .routers import auth, programs, media, contact, volunteers, events, stk_push, mpesa_callback
+from .routers import auth, programs, media, contact, volunteers, events
 from fastapi.staticfiles import StaticFiles
 import os
 
@@ -50,8 +50,8 @@ app.include_router(volunteers.router)
 app.include_router(events.router)
 app.include_router(about.router)
 app.include_router(donations.router)
-app.include_router(stk_push.router)
-app.include_router(mpesa_callback.router)
+# app.include_router(stk_push.router)
+# app.include_router(mpesa_callback.router)
 # app.include_router(submission.router, prefix="/api")
 
 @app.get("/")
