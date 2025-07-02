@@ -28,7 +28,7 @@ origins = [
     "http://localhost:5173",         # For local Vite dev server
     "http://127.0.0.1:5173",   
     "https://frontend-seven-gamma-38.vercel.app",
-    "https://www.nawiriempowerhub.org/"
+    "https://www.nawiriempowerhub.org"
     # Alternative localhost IP
     # Add other origins if deploying
 ]
