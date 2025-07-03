@@ -1,5 +1,6 @@
 import os
 import shutil
+import json
 from typing import Annotated, List
 from datetime import datetime
 from fastapi import (
@@ -11,6 +12,19 @@ from app.services import crud_service
 from app.utils.slugify import slugify  # You need to implement or install this
 
 router = APIRouter(tags=["Programs"])
+
+# Helper function to parse the stringified list
+def parse_list_input(input_string: str) -> List[str]:
+    try:
+        parsed = json.loads(input_string)
+        if isinstance(parsed, list) and all(isinstance(item, str) for item in parsed):
+            return parsed
+    except json.JSONDecodeError:
+        pass
+
+    # Fallback: try comma-separated
+    return [item.strip() for item in input_string.split(",") if item.strip()]
+
 
  # Save uploaded photo in static/media/
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))  # go up one level from routers
@@ -24,8 +38,8 @@ def create_program(
     title: str = Form(...),
     description: str = Form(...),
     category: str = Form(...),
-    objectives: Annotated[List[str], Form()] = [],
-    target_group: Annotated[List[str], Form()] = [],
+    objectives: str = Form("[]"), # Expect a string, default to empty JSON array string
+    target_group: str = Form("[]"), # Expect a string, default to empty JSON array string
     start_date: str = Form(None),
     end_date: str = Form(None),
     status: str = Form("Ongoing"),
@@ -45,19 +59,17 @@ def create_program(
     image_url = f"/{image_path}"
 
     slug = slugify(title)
-    
-    # if isinstance(objectives, str):
-    #     objectives = parse_list_input(objectives)
-    # if isinstance(target_group, str):
-    #     target_group = parse_list_input(target_group)
+    # Parse objectives and target_group from stringified JSON
+    parsed_objectives = parse_list_input(objectives)
+    parsed_target_group = parse_list_input(target_group)
 
     program_data = {
         "title": title,
         "slug": slug,
         "description": description,
         "category": category,
-        "objectives": objectives,
-        "target_group": target_group,
+        "objectives": parsed_objectives,
+        "target_group": parsed_target_group,
         "start_date": start_date,
         "end_date": end_date,
         "status": status,
@@ -65,6 +77,7 @@ def create_program(
     }
 
     return crud_service.create_item(db=db, model=models.Program, item=program_data)
+
 
 # ----------------------
 # Get All Programs

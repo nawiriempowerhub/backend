@@ -1,9 +1,11 @@
 from datetime import datetime
-from sqlalchemy import Boolean, Column, Date, Float, Integer, String, Text, Enum, ForeignKey, DateTime, func, ARRAY
+import json
+from sqlalchemy import Boolean, Column, Date, Float, Integer, String, Text, Enum, ForeignKey, DateTime, func
 from sqlalchemy.orm import relationship
 from .database import Base
 import enum
-
+from sqlalchemy.ext.mutable import MutableList
+from sqlalchemy.types import TypeDecorator, TEXT
 
 class UserRole(str, enum.Enum):
     ADMIN = "ADMIN"
@@ -75,6 +77,19 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
+class JSONList(TypeDecorator):
+    impl = TEXT
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        if value is not None:
+            return json.dumps(value)
+        return value
+
+    def process_result_value(self, value, dialect):
+        if value is not None:
+            return json.loads(value)
+        return value
 class Program(Base):
     __tablename__ = "programs"
 
@@ -82,8 +97,9 @@ class Program(Base):
     title = Column(String, nullable=False, index=True)
     slug = Column(String, unique=True, index=True)
     description = Column(Text)
-    objectives = Column(ARRAY(Text), nullable=True)
-    target_group = Column(ARRAY(Text), nullable=True)
+    objectives = Column(MutableList.as_mutable(JSONList), default=[])
+    target_group = Column(MutableList.as_mutable(JSONList), default=[])
+    # ...
     start_date = Column(Date)
     end_date = Column(Date, nullable=True)
     status = Column(String, default="Ongoing")  # You can use Enum if status is fixed set
