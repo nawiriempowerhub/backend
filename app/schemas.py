@@ -50,17 +50,21 @@ class Token(BaseModel):
 class ProgramBase(BaseModel):
     """Base schema for program details."""
     title: str
-    slug: Optional[str] = None  # Include if generated or manually entered
+    # slug: Optional[str] = None  # Include if generated or manually entered
     description: Optional[str] = None
     objectives: Optional[List[str]] = None
-    target_group: Optional[List[str]] = None
-    start_date: Optional[date] = None
-    end_date: Optional[date] = None
+    # target_group: Optional[List[str]] = None
+    # start_date: Optional[date] = None
+    # end_date: Optional[date] = None
     status: Optional[str] = "Ongoing"
     featured_image_url: Optional[str] = None
     category: Optional[ProgramCategory] = None  # Optional if your DB doesn't enforce it
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    # created_at: Optional[datetime] = None
+    # updated_at: Optional[datetime] = None
+    reason: Optional[List[str]] = None
+    key_activities: Optional[List[str]] = None
+    impact: Optional[List[str]] = None
+    invitations: Optional[str] = None
 
 
 class ProgramCreate(ProgramBase):

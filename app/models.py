@@ -1,6 +1,6 @@
 from datetime import datetime
 import json
-from sqlalchemy import Boolean, Column, Date, Float, Integer, String, Text, Enum, ForeignKey, DateTime, func
+from sqlalchemy import JSON, Boolean, Column, Date, Float, Integer, String, Text, Enum, ForeignKey, DateTime, func
 from sqlalchemy.orm import relationship
 from .database import Base
 import enum
@@ -51,6 +51,10 @@ class ProgramCategory(str, enum.Enum):
     DIGITAL_LITERACY = "Digital Literacy"
     YOUTH_EMPOWERMENT = "Youth Empowerment"
 
+class ProgramStatus(str, enum.Enum):
+    ONGOING = "Ongoing"
+    COMPLETED = "Completed"
+    UPCOMING = "Upcoming"
 class MediaType(str, enum.Enum):
     PHOTO = "PHOTO"
     VIDEO = "VIDEO"
@@ -95,18 +99,22 @@ class Program(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, nullable=False, index=True)
-    slug = Column(String, unique=True, index=True)
+    # slug = Column(String, unique=True, index=True)
     description = Column(Text)
     objectives = Column(MutableList.as_mutable(JSONList), default=[])
-    target_group = Column(MutableList.as_mutable(JSONList), default=[])
-    # ...
-    start_date = Column(Date)
-    end_date = Column(Date, nullable=True)
+    # target_group = Column(MutableList.as_mutable(JSONList), default=[])
+    # # ...
+    # start_date = Column(Date)
+    # end_date = Column(Date, nullable=True)
     status = Column(String, default="Ongoing")  # You can use Enum if status is fixed set
-    category = Column(Enum(ProgramCategory), nullable=True)
+    category = Column(Enum(ProgramStatus), nullable=True)
     featured_image_url = Column(String)  # Rename from image_url for clarity
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())
+    # created_at = Column(DateTime(timezone=True), server_default=func.now())
+    # updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())
+    reason = Column(MutableList.as_mutable(JSON), default=[])
+    key_activities = Column(MutableList.as_mutable(JSON), default=[])
+    impact = Column(MutableList.as_mutable(JSON), default=[])
+    invitations = Column(String, nullable=True)  # New field for invitations
     
     media = relationship("Media", back_populates="program")
 

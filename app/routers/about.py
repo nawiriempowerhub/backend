@@ -5,7 +5,6 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, Form, HTTPException, File, Request, UploadFile
 from sqlalchemy.orm import Session
 from typing import List
-
 from app import models, schemas
 from app.database import get_db
 from app.dependencies import get_current_active_user
@@ -76,7 +75,6 @@ def add_team_member(
 
     with open(filepath, "wb") as buffer:
         shutil.copyfileobj(photo.file, buffer)
-
     # Save only filename in DB
     member = models.TeamMember(
         name=name,
@@ -88,7 +86,6 @@ def add_team_member(
     db.commit()
     db.refresh(member)
     return member
-
 
 @router.get("/team", response_model=List[schemas.TeamMember])
 def get_team_members(db: Session = Depends(get_db)):

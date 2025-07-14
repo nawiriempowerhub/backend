@@ -38,11 +38,15 @@ def create_program(
     title: str = Form(...),
     description: str = Form(...),
     category: str = Form(...),
+    impact: str = Form("[]"),  # Expect a stringified JSON array
+    reason: str = Form("[]"),  # Expect a stringified JSON array
+    key_activities: str = Form("[]"),  # Expect a stringified JSON array
+    invitations: str = Form(None),  # Optional string for invitations
     objectives: str = Form("[]"), # Expect a string, default to empty JSON array string
-    target_group: str = Form("[]"), # Expect a string, default to empty JSON array string
-    start_date: str = Form(None),
-    end_date: str = Form(None),
-    status: str = Form("Ongoing"),
+    # target_group: str = Form("[]"), # Expect a string, default to empty JSON array string
+    # start_date: str = Form(None),
+    # end_date: str = Form(None),
+    status: str = Form(...),
     image: UploadFile = File(...),
     db: Session = Depends(dependencies.get_db),
     current_user: models.User = Depends(dependencies.get_current_active_user)
@@ -58,20 +62,25 @@ def create_program(
 
     image_url = f"/{image_path}"
 
-    slug = slugify(title)
+    # slug = slugify(title)
     # Parse objectives and target_group from stringified JSON
     parsed_objectives = parse_list_input(objectives)
-    parsed_target_group = parse_list_input(target_group)
+    parsed_impact = parse_list_input(impact)
+    parsed_reason = parse_list_input(reason)
+    parsed_key_activities = parse_list_input(key_activities)
 
     program_data = {
         "title": title,
-        "slug": slug,
+        # "slug": slug,
         "description": description,
         "category": category,
         "objectives": parsed_objectives,
-        "target_group": parsed_target_group,
-        "start_date": start_date,
-        "end_date": end_date,
+        # "target_group": parsed_impact,
+        "reason": parsed_reason,
+        "key_activities": parsed_key_activities,
+        "invitations": invitations,
+        # "start_date": start_date,
+        # "end_date": end_date,
         "status": status,
         "featured_image_url": image_url,
     }
