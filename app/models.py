@@ -106,8 +106,8 @@ class Program(Base):
     # # ...
     # start_date = Column(Date)
     # end_date = Column(Date, nullable=True)
-    status = Column(String, default="Ongoing")  # You can use Enum if status is fixed set
-    category = Column(Enum(ProgramStatus), nullable=True)
+    status = Column(Enum(ProgramStatus), default=ProgramStatus.ONGOING)  # You can use Enum if statusis fixed set
+    category = Column(Enum(ProgramCategory), nullable=True)
     featured_image_url = Column(String)  # Rename from image_url for clarity
     # created_at = Column(DateTime(timezone=True), server_default=func.now())
     # updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())
