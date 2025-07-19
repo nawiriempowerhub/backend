@@ -243,7 +243,7 @@ class TeamMemberBase(BaseModel):
     id: int
     name: str
     role: str
-    bio: str
+    # bio: str
     photo_filename: Optional[str]  # Change from HttpUrl to Optional[str]
 
 

@@ -34,7 +34,7 @@ class TeamMember(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String)
     role = Column(String)
-    bio = Column(Text)
+    # bio = Column(Text)
     photo_filename = Column(String, nullable=False)  # ✅ must be provided
 
 class ImpactEvent(Base):

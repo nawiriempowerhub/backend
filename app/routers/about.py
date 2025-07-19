@@ -57,7 +57,7 @@ def update_about(
 def add_team_member(
     name: str,
     role: str,
-    bio: str,
+    # bio: str,
     photo: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
@@ -79,7 +79,7 @@ def add_team_member(
     member = models.TeamMember(
         name=name,
         role=role,
-        bio=bio,
+        # bio=bio,
         photo_filename=filename,
     )
     db.add(member)
@@ -98,7 +98,7 @@ def update_team_member(
     member_id: int,
     name: str = None,
     role: str = None,
-    bio: str = None,
+    # bio: str = None,
     photo: UploadFile = File(None),
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
@@ -116,8 +116,8 @@ def update_team_member(
         member.name = name
     if role:
         member.role = role
-    if bio:
-        member.bio = bio
+    # if bio:
+    #     member.bio = bio
     if photo:
         BASE_DIR = os.path.dirname(os.path.dirname(__file__))  # go up one level from routers
         static_folder = os.path.join(BASE_DIR, "static", "team")
