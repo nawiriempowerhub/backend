@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware  # ✅ Correct
 from dotenv import load_dotenv
 
-from app.routers import about, donations
+from app.routers import about
 from .database import engine, Base
 from .routers import auth, programs, media, contact, volunteers, events
 from fastapi.staticfiles import StaticFiles
@@ -28,7 +28,8 @@ origins = [
     "http://localhost:5173",         # For local Vite dev server
     "http://127.0.0.1:5173",   
     "https://frontend-seven-gamma-38.vercel.app",
-    "https://www.nawiriempowerhub.org"
+    "https://www.nawiriempowerhub.org",
+    "https://vercel.com/elvis-marubes-projects/nawiri-empowerhub/3AFd7Zd9pqYP2BmMKW4SnRzTzLYZ"
     # Alternative localhost IP
     # Add other origins if deploying
 ]
