@@ -61,4 +61,3 @@ build/
 .netlify/
 
 # VS Code debug files
-*.*

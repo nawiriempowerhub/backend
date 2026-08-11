@@ -14,8 +14,11 @@ load_dotenv()
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
-# Ensure static directory exists
-os.makedirs("static", exist_ok=True)
+from app.utils.storage import get_static_dir, STATIC_DIR
+
+# Ensure static directories exist
+for folder in ["media", "programs", "team", "impact"]:
+    get_static_dir(folder)
 
 app = FastAPI(
     title="Nawiri EmpowerHub API",
@@ -36,10 +39,11 @@ origins = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,            # Accept requests from these origins
+    allow_origins=["*"],
+    allow_origin_regex=".*",
     allow_credentials=True,
-    allow_methods=["*"],              # Allow all HTTP methods
-    allow_headers=["*"],              # Allow all headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Include all the routers

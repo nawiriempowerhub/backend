@@ -11,6 +11,8 @@ from app import models, schemas, dependencies
 from app.services import crud_service
 from app.utils.slugify import slugify  # You need to implement or install this
 
+from app.utils.storage import save_upload_file, delete_file
+
 router = APIRouter(tags=["Programs"])
 
 # Helper function to parse the stringified list
@@ -25,11 +27,6 @@ def parse_list_input(input_string: str) -> List[str]:
     # Fallback: try comma-separated
     return [item.strip() for item in input_string.split(",") if item.strip()]
 
-
- # Save uploaded photo in static/media/
-BASE_DIR = os.path.dirname(os.path.dirname(__file__))  # go up one level from routers
-static_folder = os.path.join(BASE_DIR, "static", "programs")
-
 # ----------------------
 # Create Program (with image upload)
 # ----------------------
@@ -43,9 +40,6 @@ def create_program(
     key_activities: str = Form("[]"),  # Expect a stringified JSON array
     invitations: str = Form(None),  # Optional string for invitations
     objectives: str = Form("[]"), # Expect a string, default to empty JSON array string
-    # target_group: str = Form("[]"), # Expect a string, default to empty JSON array string
-    # start_date: str = Form(None),
-    # end_date: str = Form(None),
     status: str = Form(...),
     image: UploadFile = File(...),
     db: Session = Depends(dependencies.get_db),
@@ -54,15 +48,8 @@ def create_program(
     if current_user.role != models.UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="Not authorized to create programs")
 
-    filename = f"{datetime.utcnow().timestamp()}_{image.filename}"
-    image_path = os.path.join(static_folder, filename)
+    image_url = save_upload_file(image, "programs")
 
-    with open(image_path, "wb") as buffer:
-        shutil.copyfileobj(image.file, buffer)
-
-    image_url = f"/{image_path}"
-
-    # slug = slugify(title)
     # Parse objectives and target_group from stringified JSON
     parsed_objectives = parse_list_input(objectives)
     parsed_impact = parse_list_input(impact)
@@ -71,16 +58,12 @@ def create_program(
 
     program_data = {
         "title": title,
-        # "slug": slug,
         "description": description,
         "category": category,
         "objectives": parsed_objectives,
-        # "target_group": parsed_impact,
         "reason": parsed_reason,
         "key_activities": parsed_key_activities,
         "invitations": invitations,
-        # "start_date": start_date,
-        # "end_date": end_date,
         "status": status,
         "featured_image_url": image_url,
     }
@@ -145,13 +128,7 @@ def delete_program(
         raise HTTPException(status_code=404, detail=f"Program with id {program_id} not found")
 
     if program.featured_image_url:
-        try:
-            filename = os.path.basename(program.featured_image_url)
-            image_path = os.path.join(static_folder, filename)
-            if os.path.exists(image_path):
-                os.remove(image_path)
-        except Exception as e:
-            print(f"Warning: Failed to delete program image: {e}")
+        delete_file(program.featured_image_url, "programs")
 
     db.delete(program)
     db.commit()

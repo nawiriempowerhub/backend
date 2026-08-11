@@ -53,11 +53,12 @@ def update_about(
     return about
 
 
+from app.utils.storage import save_upload_file, delete_file
+
 @router.post("/team", response_model=schemas.TeamMember)
 def add_team_member(
     name: str,
     role: str,
-    # bio: str,
     photo: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
@@ -65,22 +66,11 @@ def add_team_member(
     if current_user.role != models.UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="Unauthorized")
 
-    # Save uploaded photo in static/team/
-    BASE_DIR = os.path.dirname(os.path.dirname(__file__))  # go up one level from routers
-    static_folder = os.path.join(BASE_DIR, "static", "team")
-    os.makedirs(static_folder, exist_ok=True)
-
-    filename = f"{uuid4().hex}_{photo.filename}"
-    filepath = os.path.join(static_folder, filename)
-
-    with open(filepath, "wb") as buffer:
-        shutil.copyfileobj(photo.file, buffer)
-    # Save only filename in DB
+    photo_url = save_upload_file(photo, "team")
     member = models.TeamMember(
         name=name,
         role=role,
-        # bio=bio,
-        photo_filename=filename,
+        photo_filename=photo_url,
     )
     db.add(member)
     db.commit()
@@ -90,7 +80,7 @@ def add_team_member(
 @router.get("/team", response_model=List[schemas.TeamMember])
 def get_team_members(db: Session = Depends(get_db)):
     members = db.query(models.TeamMember).all()
-    return members  # Just return the DB model, Pydantic will serialize
+    return members
 
 
 @router.put("/team/{member_id}", response_model=schemas.TeamMember)
@@ -98,7 +88,6 @@ def update_team_member(
     member_id: int,
     name: str = None,
     role: str = None,
-    # bio: str = None,
     photo: UploadFile = File(None),
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
@@ -116,20 +105,10 @@ def update_team_member(
         member.name = name
     if role:
         member.role = role
-    # if bio:
-    #     member.bio = bio
     if photo:
-        BASE_DIR = os.path.dirname(os.path.dirname(__file__))  # go up one level from routers
-        static_folder = os.path.join(BASE_DIR, "static", "team")
-        os.makedirs(static_folder, exist_ok=True)
-        filename = f"{uuid4().hex}_{photo.filename}"
-        filepath = os.path.join(static_folder, filename)
-        print(f"Saving to: {filepath}")
-
- 
-        with open(filepath, "wb") as buffer:
-            shutil.copyfileobj(photo.file, buffer)
-        member.photo_filename = filename
+        if member.photo_filename:
+            delete_file(member.photo_filename, "team")
+        member.photo_filename = save_upload_file(photo, "team")
 
     db.commit()
     db.refresh(member)
@@ -149,21 +128,12 @@ def delete_team_member(
     if not member:
         raise HTTPException(status_code=404, detail="Team member not found")
 
-    # ✅ Delete image file from disk if exists
     if member.photo_filename:
-        try:
-            filename = os.path.basename(member.photo_filename)
-            image_path = os.path.join(os.path.dirname(__file__), "static", "team", filename)
-            if os.path.exists(image_path):
-                print(f"Deleting team member photo file: {image_path}")
-                os.remove(image_path)
-        except Exception as e:
-            print(f"Warning: failed to delete team member photo file: {e}")
+        delete_file(member.photo_filename, "team")
 
     db.delete(member)
     db.commit()
     return {"detail": "Team member deleted successfully"}
-
 
 
 @router.post("/impact", response_model=schemas.ImpactEvent)
@@ -174,25 +144,12 @@ def add_impact_event(
     image: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
-    request: Request = None,
 ):
     if current_user.role != models.UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="Unauthorized")
 
-    # Save image
-    static_folder = "static/impact"
-    os.makedirs(static_folder, exist_ok=True)
-    filename = f"{uuid4().hex}_{image.filename}"
-    filepath = os.path.join(static_folder, filename)
+    image_url = save_upload_file(image, "impact")
 
-    with open(filepath, "wb") as buffer:
-        shutil.copyfileobj(image.file, buffer)
-
-    # ✅ Generate full image URL
-    base_url = str(request.base_url).rstrip("/")
-    image_url = f"{base_url}/static/impact/{filename}"  # This is now a full URL
-
-    # ✅ Save full URL to DB
     db_event = models.ImpactEvent(
         title=title, description=description, date=date, image_filename=image_url
     )
@@ -204,12 +161,8 @@ def add_impact_event(
 
 
 @router.get("/impact", response_model=List[schemas.ImpactEvent])
-def get_impact_events(request: Request, db: Session = Depends(get_db)):
-    impact_events = db.query(models.ImpactEvent).all()
-    base_url = request.base_url
-    for event in impact_events:
-        event.image_filename = str(base_url) + f"static/impact/{event.image_filename}"
-    return impact_events
+def get_impact_events(db: Session = Depends(get_db)):
+    return db.query(models.ImpactEvent).all()
 
 
 @router.put("/impact/{impact_id}", response_model=schemas.ImpactEvent)
@@ -220,7 +173,6 @@ def update_impact_event(
     image: UploadFile = File(None),
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
-    request: Request = None  # ✅ Inject FastAPI request to build full image URL
 ):
     if current_user.role != models.UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="Unauthorized")
@@ -234,17 +186,9 @@ def update_impact_event(
     if description:
         event.description = description
     if image:
-        static_folder = "static/impact"
-        os.makedirs(static_folder, exist_ok=True)
-        filename = f"{uuid4().hex}_{image.filename}"
-        filepath = os.path.join(static_folder, filename)
-
-        with open(filepath, "wb") as buffer:
-            shutil.copyfileobj(image.file, buffer)
-
-        # ✅ Generate full image URL for schema validation
-        base_url = str(request.base_url).rstrip("/")
-        event.image_filename = f"{base_url}/static/impact/{filename}"
+        if event.image_filename:
+            delete_file(event.image_filename, "impact")
+        event.image_filename = save_upload_file(image, "impact")
 
     db.commit()
     db.refresh(event)
@@ -263,17 +207,8 @@ def delete_impact_event(
     if not event:
         raise HTTPException(status_code=404, detail="Impact event not found")
 
-    # ✅ Delete image file from disk if exists
     if event.image_filename:
-        try:
-            # Extract actual filename from full URL
-            filename = os.path.basename(event.image_filename)
-            image_path = os.path.join("static/impact", filename)
-            if os.path.exists(image_path):
-                print(f"Deleting image file: {image_path}")
-                os.remove(image_path)
-        except Exception as e:
-            print(f"Warning: failed to delete image file: {e}")
+        delete_file(event.image_filename, "impact")
 
     db.delete(event)
     db.commit()
