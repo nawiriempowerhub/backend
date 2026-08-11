@@ -3,9 +3,12 @@ import shutil
 from uuid import uuid4
 from fastapi import HTTPException, UploadFile, status
 
-# Absolute path to app/static
+# Absolute path to static directory (supports Railway /app/static volume mount)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-STATIC_DIR = os.path.join(BASE_DIR, "static")
+if os.path.exists("/app/static"):
+    STATIC_DIR = "/app/static"
+else:
+    STATIC_DIR = os.path.join(BASE_DIR, "static")
 
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".mp4", ".pdf"}
 

@@ -63,6 +63,5 @@ app.include_router(about.router)
 def read_root():
     return {"message": "Welcome to the Nawiri EmpowerHub API"}
 
-# Ensure path is correct relative to this file
-static_path = os.path.join(os.path.dirname(__file__), "static")
-app.mount("/static", StaticFiles(directory=static_path), name="static")
+# Ensure static path works on local dev and Railway /app/static volume mount
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
