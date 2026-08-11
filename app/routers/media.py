@@ -7,18 +7,13 @@ from fastapi import (
 from sqlalchemy.orm import Session
 from app import models, schemas
 from app.dependencies import get_db, get_current_active_user
+from app.utils.storage import save_upload_file, delete_file
 from datetime import datetime
-from uuid import uuid4
 
 router = APIRouter(
     prefix="/media",
     tags=["Media"],
 )
-
- # Save uploaded photo in static/media/
-BASE_DIR = os.path.dirname(os.path.dirname(__file__))  # go up one level from routers
-static_folder = os.path.join(BASE_DIR, "static", "media")
-os.makedirs(static_folder, exist_ok=True)
 
 # 1. Get all media with optional type filter
 @router.get("", response_model=List[schemas.Media])
@@ -50,14 +45,9 @@ def create_media_item(
     if current_user.role != models.UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="Not authorized to upload media")
 
-    # file_url = None
+    saved_file_url = None
     if file_url:
-        extension = os.path.splitext(file_url.filename)[-1]
-        filename = f"{uuid4().hex}{extension}"
-        file_path = os.path.join(static_folder, filename)
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file_url.file, buffer)
-        file_url = f"/static/media/{filename}"
+        saved_file_url = save_upload_file(file_url, "media")
 
     media = models.Media(
         title=title,
@@ -66,13 +56,62 @@ def create_media_item(
         program_id=program_id,
         external_link=external_link,
         is_featured=is_featured,
-        file_url=file_url,
+        file_url=saved_file_url,
         created_at=datetime.utcnow(),
     )
     db.add(media)
     db.commit()
     db.refresh(media)
     return media
+
+
+# 2b. Batch Upload Media (Multiple files for a specific program)
+@router.post("/batch", response_model=List[schemas.Media], status_code=status.HTTP_201_CREATED)
+def create_batch_media(
+    program_id: Optional[int] = Form(None),
+    title_prefix: Optional[str] = Form(None),
+    type: schemas.MediaType = Form(schemas.MediaType.PHOTO),
+    description: Optional[str] = Form(None),
+    files: List[UploadFile] = File(...),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user)
+):
+    if current_user.role != models.UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Not authorized to upload media")
+
+    created_items = []
+
+    # Infer title prefix from program if not provided
+    if not title_prefix and program_id:
+        prog = db.query(models.Program).filter(models.Program.id == program_id).first()
+        if prog:
+            title_prefix = prog.title
+
+    base_title = title_prefix or "Media Item"
+
+    for idx, upload_file in enumerate(files, 1):
+        if not upload_file or not upload_file.filename:
+            continue
+
+        saved_url = save_upload_file(upload_file, "media")
+        item_title = f"{base_title} #{idx}" if len(files) > 1 else base_title
+
+        media_item = models.Media(
+            title=item_title,
+            type=type,
+            description=description,
+            program_id=program_id,
+            file_url=saved_url,
+            created_at=datetime.utcnow(),
+        )
+        db.add(media_item)
+        created_items.append(media_item)
+
+    db.commit()
+    for item in created_items:
+        db.refresh(item)
+
+    return created_items
 
 
 # 3. Get media by program
@@ -130,7 +169,7 @@ def update_media_program(
     return media
 
 @router.patch("/{media_id}", response_model=schemas.Media)
-async def update_media(
+def update_media(
     media_id: int,
     title: Optional[str] = Form(None),
     description: Optional[str] = Form(None),
@@ -150,21 +189,18 @@ async def update_media(
     if not media:
         raise HTTPException(status_code=404, detail="Media not found")
 
-    # ✅ Optional: Validate program_id
     if program_id is not None:
         program = db.query(models.Program).filter(models.Program.id == program_id).first()
         if not program:
             raise HTTPException(status_code=400, detail="Program not found")
 
-    # ✅ Handle file upload
+    # Handle file upload
     if file:
-        filename = f"{uuid4().hex}_{file.filename}"
-        save_path = os.path.join(static_folder, filename)
-        with open(save_path, "wb") as f:
-            f.write(await file.read())
-        media.file_url = f"/static/media/{filename}"
+        if media.file_url:
+            delete_file(media.file_url, "media")
+        media.file_url = save_upload_file(file, "media")
 
-    # ✅ Update fields if provided
+    # Update fields if provided
     if title is not None: media.title = title
     if description is not None: media.description = description
     if type is not None: media.type = type
@@ -193,13 +229,7 @@ def delete_media_item(
         raise HTTPException(status_code=404, detail="Media item not found")
 
     if media.file_url:
-        try:
-            filename = os.path.basename(media.file_url)
-            file_path = os.path.join(static_folder, filename)
-            if os.path.exists(file_path):
-                os.remove(file_path)
-        except Exception as e:
-            print(f"Warning: Could not delete media file - {e}")
+        delete_file(media.file_url, "media")
 
     db.delete(media)
     db.commit()
