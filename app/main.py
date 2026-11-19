@@ -29,21 +29,24 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Allow frontend origin
+# Allow frontend origins
 origins = [
-    "http://localhost:5173",         # For local Vite dev server
-    "http://127.0.0.1:5173",   
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:3000",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:5174",
+    "http://127.0.0.1:3000",
     "https://frontend-seven-gamma-38.vercel.app",
     "https://www.nawiriempowerhub.org",
-    "https://vercel.com/elvis-marubes-projects/nawiri-empowerhub/3AFd7Zd9pqYP2BmMKW4SnRzTzLYZ"
-    # Alternative localhost IP
-    # Add other origins if deploying
+    "https://nawiriempowerhub.org",
+    "https://vercel.com/elvis-marubes-projects/nawiri-empowerhub/3AFd7Zd9pqYP2BmMKW4SnRzTzLYZ",
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_origin_regex=".*",
+    allow_origins=origins,
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1|.*\.vercel\.app)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
