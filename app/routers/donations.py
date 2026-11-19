@@ -162,32 +162,27 @@ async def payhero_callback(
     return {"ResultCode": 0, "ResultDesc": "Accepted"}
 
 
-# ─── Check Transaction Status (manual polling) ──────────────────────────────
-@router.get("/status/{external_reference}")
-def get_donation_status(
-    external_reference: str,
-    db: Session = Depends(get_db),
-):
-    """
-    Check the payment status of a donation.
-    First checks the local DB; if still PENDING/QUEUED, queries PayHero directly.
-    """
-    donation = (
+# ─── Helper: Find Donation by ID or Reference ────────────────────────────────
+def _find_donation(db: Session, identifier: str):
+    if str(identifier).isdigit():
+        donation = db.query(models.Donation).filter(models.Donation.id == int(identifier)).first()
+        if donation:
+            return donation
+    return (
         db.query(models.Donation)
-        .filter(models.Donation.external_reference == external_reference)
+        .filter(models.Donation.external_reference == identifier)
         .first()
     )
 
-    if not donation:
-        raise HTTPException(status_code=404, detail="Donation not found")
 
-    # If still pending, try to get a fresh status from PayHero
+def _sync_live_status(db: Session, donation: models.Donation):
+    """If still pending, query PayHero to get real-time outcome."""
     if donation.payment_status in (
         models.PaymentStatus.PENDING,
         models.PaymentStatus.QUEUED,
-    ):
+    ) and donation.external_reference:
         try:
-            ph_status = check_transaction_status(external_reference)
+            ph_status = check_transaction_status(donation.external_reference)
             status_str = ph_status.get("status", "").upper()
 
             if status_str == "SUCCESS":
@@ -198,17 +193,51 @@ def get_donation_status(
 
             db.commit()
             db.refresh(donation)
-        except HTTPException:
-            pass  # Return the last known local status
+        except Exception as e:
+            logger.warning("Could not sync PayHero status live: %s", e)
+    return donation
+
+
+# ─── Check Transaction Status (by ID or external_reference) ──────────────────
+@router.get("/status/{identifier}")
+def get_donation_status(
+    identifier: str,
+    db: Session = Depends(get_db),
+):
+    """
+    Check payment status. Accepts either numeric ID (e.g. 10) or external_reference (DON-...).
+    """
+    donation = _find_donation(db, identifier)
+    if not donation:
+        raise HTTPException(status_code=404, detail="Donation not found")
+
+    donation = _sync_live_status(db, donation)
 
     return {
         "id": donation.id,
         "external_reference": donation.external_reference,
         "amount": donation.amount,
-        "payment_status": donation.payment_status.value,
+        "payment_status": donation.payment_status.value if donation.payment_status else "PENDING",
         "provider_reference": donation.provider_reference,
         "created_at": donation.created_at,
     }
+
+
+# ─── Public / Frontend Poll by Donation ID ───────────────────────────────────
+@router.get("/{donation_id}", response_model=schemas.Donation)
+def get_donation_by_id(
+    donation_id: str,
+    db: Session = Depends(get_db),
+):
+    """
+    Get donation status by ID (used by frontend polling).
+    """
+    donation = _find_donation(db, donation_id)
+    if not donation:
+        raise HTTPException(status_code=404, detail="Donation not found")
+
+    donation = _sync_live_status(db, donation)
+    return donation
 
 
 # ─── Admin: List All Donations ───────────────────────────────────────────────
@@ -225,24 +254,3 @@ def get_all_donations(
         .order_by(models.Donation.created_at.desc())
         .all()
     )
-
-
-# ─── Admin: Get Single Donation ──────────────────────────────────────────────
-@router.get("/{donation_id}", response_model=schemas.Donation)
-def get_donation_by_id(
-    donation_id: int,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_active_user),
-):
-    """Get a single donation by ID (admin only)."""
-    if current_user.role != models.UserRole.ADMIN:
-        raise HTTPException(status_code=403, detail="Admins only")
-
-    donation = (
-        db.query(models.Donation)
-        .filter(models.Donation.id == donation_id)
-        .first()
-    )
-    if not donation:
-        raise HTTPException(status_code=404, detail="Donation not found")
-    return donation
