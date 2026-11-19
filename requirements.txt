@@ -9,4 +9,4 @@ python-dotenv
 alembic
 requests
 cloudinary
-psycopg-binary
+psycopg[binary]

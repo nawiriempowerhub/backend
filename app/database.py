@@ -26,9 +26,11 @@ if not DATABASE_URL:
             "Database connection failed: neither DATABASE_URL nor full DB_* environment variables are set."
         )
 
-# Fix for SQLAlchemy: postgres:// -> postgresql://
+# Normalize URL for SQLAlchemy to use psycopg2 (from psycopg2-binary)
 if DATABASE_URL.startswith("postgres://"):
-    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+psycopg2://", 1)
+elif DATABASE_URL.startswith("postgresql://") and not DATABASE_URL.startswith("postgresql+"):
+    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg2://", 1)
 
 print("DATABASE_URL is configured successfully.")
 
