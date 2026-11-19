@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 
 # ─── Configuration ────────────────────────────────────────────────────────────
 PAYHERO_BASE_URL = os.getenv("PAYHERO_BASE_URL", "https://backend.payhero.co.ke")
+PAYHERO_BASIC_AUTH_TOKEN = os.getenv("PAYHERO_BASIC_AUTH_TOKEN", "")
 PAYHERO_API_USERNAME = os.getenv("PAYHERO_API_USERNAME", "")
 PAYHERO_API_PASSWORD = os.getenv("PAYHERO_API_PASSWORD", "")
 try:
@@ -32,6 +33,12 @@ PAYHERO_CALLBACK_URL = os.getenv("PAYHERO_CALLBACK_URL", "")
 
 def _get_auth_header() -> str:
     """Build the HTTP Basic Auth header value."""
+    # 1. Direct Basic Auth Token (from PayHero dashboard)
+    if PAYHERO_BASIC_AUTH_TOKEN:
+        token = PAYHERO_BASIC_AUTH_TOKEN.strip()
+        return token if token.startswith("Basic ") else f"Basic {token}"
+
+    # 2. Base64 encode username:password
     if not PAYHERO_API_USERNAME or not PAYHERO_API_PASSWORD:
         raise HTTPException(
             status_code=500,
