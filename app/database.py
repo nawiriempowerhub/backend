@@ -7,18 +7,30 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
-# Read individual database credentials from environment variables
-DB_USER = os.getenv("DB_USER")
-DB_PASSWORD = os.getenv("DB_PASSWORD")
-DB_HOST = os.getenv("DB_HOST")
-DB_PORT = os.getenv("DB_PORT")
-DB_NAME = os.getenv("DB_NAME")
-DB_DIALECT = "postgresql" # Or read from env if you prefer: os.getenv("DB_DIALECT")
+# 1. Prefer direct DATABASE_URL (automatically provided by Railway, Heroku, etc.)
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-# Construct the full database connection URL
-DATABASE_URL = f"{DB_DIALECT}://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+# 2. Fallback to individual credentials if DATABASE_URL is not set
+if not DATABASE_URL:
+    DB_USER = os.getenv("DB_USER")
+    DB_PASSWORD = os.getenv("DB_PASSWORD")
+    DB_HOST = os.getenv("DB_HOST")
+    DB_PORT = os.getenv("DB_PORT", "5432")
+    DB_NAME = os.getenv("DB_NAME")
+    DB_DIALECT = os.getenv("DB_DIALECT", "postgresql")
 
-print("DATABASE_URL =", DATABASE_URL)  # <--- Add this line here
+    if DB_USER and DB_PASSWORD and DB_HOST and DB_NAME:
+        DATABASE_URL = f"{DB_DIALECT}://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    else:
+        raise ValueError(
+            "Database connection failed: neither DATABASE_URL nor full DB_* environment variables are set."
+        )
+
+# Fix for SQLAlchemy: postgres:// -> postgresql://
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+print("DATABASE_URL is configured successfully.")
 
 # SQLAlchemy engine setup
 engine = create_engine(DATABASE_URL)
