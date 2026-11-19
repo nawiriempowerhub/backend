@@ -8,7 +8,9 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from app.database import Base  # ✅ import your SQLAlchemy Base here
+from app.database import Base
+from app import models  # ✅ Import models so Base.metadata knows about all tables
+
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

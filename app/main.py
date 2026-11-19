@@ -12,7 +12,10 @@ import os
 load_dotenv()
 
 # Create database tables
-Base.metadata.create_all(bind=engine)
+try:
+    Base.metadata.create_all(bind=engine)
+except Exception as e:
+    print(f"[Startup Warning] Error during create_all: {e}")
 
 from app.utils.storage import get_static_dir, STATIC_DIR
 
