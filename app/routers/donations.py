@@ -109,57 +109,90 @@ def create_donation(
 # ─── PayHero Callback (Webhook) ──────────────────────────────────────────────
 @router.post("/callback", status_code=200)
 async def payhero_callback(
-    payload: schemas.PayHeroCallbackPayload,
+    request: Request,
     db: Session = Depends(get_db),
 ):
     """
     Webhook endpoint called by PayHero when a transaction completes or fails.
     Must be publicly accessible (set PAYHERO_CALLBACK_URL to this endpoint).
     """
-    logger.info(
-        "PayHero callback received: ref=%s status=%s success=%s",
-        payload.external_reference, payload.status, payload.success,
-    )
+    try:
+        payload = await request.json()
+    except Exception:
+        try:
+            payload = dict(await request.form())
+        except Exception:
+            payload = {}
 
-    # Look up the donation by external reference
-    donation = (
-        db.query(models.Donation)
-        .filter(models.Donation.external_reference == payload.external_reference)
-        .first()
+    logger.info("Raw PayHero webhook received: %s", payload)
+    print("Raw PayHero webhook received:", payload)
+
+    # Handle flat or nested response object
+    data = payload.get("response") if isinstance(payload.get("response"), dict) else payload
+
+    ext_ref = data.get("external_reference") or payload.get("external_reference")
+    ph_ref = data.get("reference") or payload.get("reference")
+    prov_ref = (
+        data.get("provider_reference")
+        or payload.get("provider_reference")
+        or data.get("payment_reference")
+        or data.get("MpesaReceiptNumber")
     )
+    status_raw = str(data.get("status") or payload.get("status") or "").upper()
+    success = bool(data.get("success") or payload.get("success") or status_raw in ("SUCCESS", "COMPLETED", "PAID"))
+
+    # Look up the donation by external reference or payhero reference
+    donation = None
+    if ext_ref:
+        donation = (
+            db.query(models.Donation)
+            .filter(models.Donation.external_reference == ext_ref)
+            .first()
+        )
+    if not donation and ph_ref:
+        donation = (
+            db.query(models.Donation)
+            .filter(models.Donation.payhero_reference == ph_ref)
+            .first()
+        )
 
     if not donation:
         logger.warning(
-            "Callback for unknown reference: %s", payload.external_reference
+            "Callback for unknown reference: ext_ref=%s, ph_ref=%s", ext_ref, ph_ref
         )
-        return {"ResultCode": 0, "ResultDesc": "Accepted (unknown reference)"}
+        return {"status": "accepted", "message": "Unknown reference"}
 
     # Update the donation record
-    if payload.success and payload.status and payload.status.lower() == "success":
+    if success and status_raw not in ("FAILED", "CANCELLED", "REJECTED"):
         donation.payment_status = models.PaymentStatus.SUCCESS
     else:
         donation.payment_status = models.PaymentStatus.FAILED
 
-    donation.payhero_reference = payload.reference
-    donation.provider_reference = payload.provider_reference
+    if ph_ref:
+        donation.payhero_reference = ph_ref
+    if prov_ref:
+        donation.provider_reference = prov_ref
 
-    if payload.transaction_date:
+    tx_date = data.get("transaction_date") or payload.get("transaction_date")
+    if tx_date:
         try:
             donation.transaction_date = datetime.fromisoformat(
-                payload.transaction_date.replace("Z", "+00:00")
+                str(tx_date).replace("Z", "+00:00")
             )
-        except (ValueError, AttributeError):
+        except Exception:
             pass
 
     db.commit()
+    db.refresh(donation)
 
     logger.info(
         "Donation #%d updated → %s (M-Pesa receipt: %s)",
-        donation.id, donation.payment_status.value,
+        donation.id,
+        donation.payment_status.value,
         donation.provider_reference or "N/A",
     )
 
-    return {"ResultCode": 0, "ResultDesc": "Accepted"}
+    return {"status": "success", "message": "Callback processed successfully"}
 
 
 # ─── Helper: Find Donation by ID or Reference ────────────────────────────────
@@ -180,21 +213,30 @@ def _sync_live_status(db: Session, donation: models.Donation):
     if donation.payment_status in (
         models.PaymentStatus.PENDING,
         models.PaymentStatus.QUEUED,
-    ) and donation.external_reference:
-        try:
-            ph_status = check_transaction_status(donation.external_reference)
-            status_str = ph_status.get("status", "").upper()
+    ):
+        refs_to_try = [r for r in [donation.payhero_reference, donation.external_reference] if r]
+        for ref in refs_to_try:
+            try:
+                ph_status = check_transaction_status(ref)
+                status_str = str(ph_status.get("status", "")).upper()
 
-            if status_str == "SUCCESS":
-                donation.payment_status = models.PaymentStatus.SUCCESS
-                donation.provider_reference = ph_status.get("payment_reference")
-            elif status_str == "FAILED":
-                donation.payment_status = models.PaymentStatus.FAILED
-
-            db.commit()
-            db.refresh(donation)
-        except Exception as e:
-            logger.warning("Could not sync PayHero status live: %s", e)
+                if status_str in ("SUCCESS", "COMPLETED", "PAID"):
+                    donation.payment_status = models.PaymentStatus.SUCCESS
+                    donation.provider_reference = (
+                        ph_status.get("payment_reference")
+                        or ph_status.get("provider_reference")
+                        or ph_status.get("third_party_reference")
+                    )
+                    db.commit()
+                    db.refresh(donation)
+                    break
+                elif status_str in ("FAILED", "CANCELLED", "REJECTED"):
+                    donation.payment_status = models.PaymentStatus.FAILED
+                    db.commit()
+                    db.refresh(donation)
+                    break
+            except Exception as e:
+                logger.warning("Could not sync PayHero status live for %s: %s", ref, e)
     return donation
 
 
@@ -206,38 +248,60 @@ def get_donation_status(
 ):
     """
     Check payment status. Accepts either numeric ID (e.g. 10) or external_reference (DON-...).
+    Returns both status and payment_status to support any frontend naming.
     """
     donation = _find_donation(db, identifier)
     if not donation:
         raise HTTPException(status_code=404, detail="Donation not found")
 
     donation = _sync_live_status(db, donation)
+    status_val = donation.payment_status.value if donation.payment_status else "PENDING"
 
     return {
         "id": donation.id,
+        "status": status_val,
+        "payment_status": status_val,
         "external_reference": donation.external_reference,
-        "amount": donation.amount,
-        "payment_status": donation.payment_status.value if donation.payment_status else "PENDING",
+        "payhero_reference": donation.payhero_reference,
         "provider_reference": donation.provider_reference,
+        "amount": donation.amount,
         "created_at": donation.created_at,
     }
 
 
 # ─── Public / Frontend Poll by Donation ID ───────────────────────────────────
-@router.get("/{donation_id}", response_model=schemas.Donation)
+@router.get("/{donation_id}")
 def get_donation_by_id(
     donation_id: str,
     db: Session = Depends(get_db),
 ):
     """
     Get donation status by ID (used by frontend polling).
+    Returns both status and payment_status for maximum frontend compatibility.
     """
     donation = _find_donation(db, donation_id)
     if not donation:
         raise HTTPException(status_code=404, detail="Donation not found")
 
     donation = _sync_live_status(db, donation)
-    return donation
+    status_val = donation.payment_status.value if donation.payment_status else "PENDING"
+
+    return {
+        "id": donation.id,
+        "donor_name": donation.donor_name,
+        "email": donation.email,
+        "donor_phone": donation.donor_phone,
+        "amount": donation.amount,
+        "message": donation.message,
+        "status": status_val,
+        "payment_status": status_val,
+        "external_reference": donation.external_reference,
+        "payhero_reference": donation.payhero_reference,
+        "provider_reference": donation.provider_reference,
+        "payment_provider": donation.payment_provider,
+        "transaction_date": donation.transaction_date,
+        "created_at": donation.created_at,
+    }
 
 
 # ─── Admin: List All Donations ───────────────────────────────────────────────
