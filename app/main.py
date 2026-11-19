@@ -11,11 +11,38 @@ import os
 # Load environment variables from .env file
 load_dotenv()
 
+from sqlalchemy import text
+
 # Create database tables
 try:
     Base.metadata.create_all(bind=engine)
 except Exception as e:
     print(f"[Startup Warning] Error during create_all: {e}")
+
+# Automatically ensure all PayHero donation columns exist
+try:
+    with engine.begin() as conn:
+        conn.execute(text("""
+            DO $$ BEGIN
+                CREATE TYPE paymentstatus AS ENUM ('PENDING', 'QUEUED', 'SUCCESS', 'FAILED');
+            EXCEPTION
+                WHEN duplicate_object THEN null;
+            END $$;
+
+            ALTER TABLE donations ADD COLUMN IF NOT EXISTS donor_phone VARCHAR;
+            ALTER TABLE donations ADD COLUMN IF NOT EXISTS message TEXT;
+            ALTER TABLE donations ADD COLUMN IF NOT EXISTS payment_status paymentstatus DEFAULT 'PENDING';
+            ALTER TABLE donations ADD COLUMN IF NOT EXISTS external_reference VARCHAR;
+            ALTER TABLE donations ADD COLUMN IF NOT EXISTS payhero_reference VARCHAR;
+            ALTER TABLE donations ADD COLUMN IF NOT EXISTS provider_reference VARCHAR;
+            ALTER TABLE donations ADD COLUMN IF NOT EXISTS payment_provider VARCHAR DEFAULT 'm-pesa';
+            ALTER TABLE donations ADD COLUMN IF NOT EXISTS transaction_date TIMESTAMP WITH TIME ZONE;
+            ALTER TABLE donations ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE;
+            CREATE INDEX IF NOT EXISTS ix_donations_external_reference ON donations (external_reference);
+        """))
+    print("[Startup] Donations table schema synchronized successfully.")
+except Exception as e:
+    print(f"[Startup Warning] Error syncing donations schema: {e}")
 
 from app.utils.storage import get_static_dir, STATIC_DIR
 

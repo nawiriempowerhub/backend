@@ -46,6 +46,7 @@ def main():
         print(f"\nExisting columns in 'donations': {existing_columns}")
 
         columns_to_add = [
+            ("donor_phone", "VARCHAR"),
             ("message", "TEXT"),
             ("external_reference", "VARCHAR"),
             ("payhero_reference", "VARCHAR"),
