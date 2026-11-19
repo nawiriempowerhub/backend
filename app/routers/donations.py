@@ -24,6 +24,24 @@ router = APIRouter(
 )
 
 
+# ─── Debug: Check PayHero config (remove in production) ──────────────────────
+@router.get("/debug/config")
+def debug_config():
+    """Temporarily check if PayHero env vars are loaded. Remove after debugging."""
+    from app.services.payhero_service import (
+        PAYHERO_API_USERNAME, PAYHERO_API_PASSWORD,
+        PAYHERO_CHANNEL_ID, PAYHERO_CALLBACK_URL, PAYHERO_BASE_URL,
+    )
+    return {
+        "base_url": PAYHERO_BASE_URL,
+        "username_set": bool(PAYHERO_API_USERNAME),
+        "username_preview": PAYHERO_API_USERNAME[:5] + "..." if PAYHERO_API_USERNAME else "(empty)",
+        "password_set": bool(PAYHERO_API_PASSWORD),
+        "channel_id": PAYHERO_CHANNEL_ID,
+        "callback_url": PAYHERO_CALLBACK_URL,
+    }
+
+
 # ─── Initiate a Donation (STK Push) ──────────────────────────────────────────
 @router.post("", response_model=schemas.Donation, status_code=201)
 def create_donation(
@@ -67,12 +85,15 @@ def create_donation(
             db.commit()
             db.refresh(new_donation)
 
-    except HTTPException:
-        # STK Push failed — mark donation as failed
+    except HTTPException as exc:
+        # STK Push failed — mark donation as failed and return the actual error
         new_donation.payment_status = models.PaymentStatus.FAILED
         db.commit()
         db.refresh(new_donation)
-        raise
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail=f"STK Push failed: {exc.detail}"
+        )
 
     return new_donation
 
