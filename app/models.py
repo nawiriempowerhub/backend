@@ -177,8 +177,11 @@ class EventRegistration(Base):
 # In your Event model, add:
 Event.registrations = relationship("EventRegistration", back_populates="event", cascade="all, delete")
   
-# class PaymentMethod(str, enum.Enum):
-#     mpesa = "M-Pesa"
+class PaymentStatus(str, enum.Enum):
+    PENDING = "PENDING"
+    QUEUED = "QUEUED"
+    SUCCESS = "SUCCESS"
+    FAILED = "FAILED"
 
 
 class Donation(Base):
@@ -188,6 +191,16 @@ class Donation(Base):
     donor_name = Column(String, nullable=True)
     email = Column(String, nullable=True)
     amount = Column(Float, nullable=False)
-    # payment_method = Column(Enum(PaymentMethod), default="M-Pesa")
     donor_phone = Column(String, nullable=True)
+    message = Column(Text, nullable=True)
+
+    # PayHero transaction tracking
+    payment_status = Column(Enum(PaymentStatus), default=PaymentStatus.PENDING)
+    external_reference = Column(String, unique=True, index=True, nullable=True)
+    payhero_reference = Column(String, nullable=True)       # PayHero's internal ref
+    provider_reference = Column(String, nullable=True)      # M-Pesa receipt number
+    payment_provider = Column(String, default="m-pesa")
+    transaction_date = Column(DateTime(timezone=True), nullable=True)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())

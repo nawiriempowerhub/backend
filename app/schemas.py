@@ -298,29 +298,55 @@ class ImpactEvent(ImpactEventBase):
     class Config:
         orm_mode = True
         
-class PaymentMethod(str, enum.Enum):
-    mpesa = "M-Pesa"
-    card = "Card"
-    bank = "Bank"
-    cash = "Cash"
-    other = "Other"
+class PaymentStatus(str, enum.Enum):
+    PENDING = "PENDING"
+    QUEUED = "QUEUED"
+    SUCCESS = "SUCCESS"
+    FAILED = "FAILED"
+
 
 class DonationBase(BaseModel):
-    donor_name: Optional[str]
-    email: Optional[EmailStr]
+    donor_name: Optional[str] = None
+    email: Optional[EmailStr] = None
     donor_phone: str
     amount: float
-    payment_method: Optional[PaymentMethod] = PaymentMethod.mpesa
+    message: Optional[str] = None
+
 
 class DonationCreate(DonationBase):
+    """Used by the frontend to initiate a donation / STK Push."""
     pass
 
+
 class Donation(DonationBase):
+    """Full donation response with PayHero tracking fields."""
     id: int
+    payment_status: Optional[PaymentStatus] = PaymentStatus.PENDING
+    external_reference: Optional[str] = None
+    payhero_reference: Optional[str] = None
+    provider_reference: Optional[str] = None
+    payment_provider: Optional[str] = "m-pesa"
+    transaction_date: Optional[datetime] = None
     created_at: datetime
 
     class Config:
         orm_mode = True
+
+
+class PayHeroCallbackPayload(BaseModel):
+    """Incoming webhook payload from PayHero."""
+    success: bool
+    status: str
+    message: Optional[str] = None
+    reference: Optional[str] = None
+    external_reference: Optional[str] = None
+    amount: Optional[float] = None
+    currency: Optional[str] = None
+    transaction_id: Optional[str] = None
+    transaction_date: Optional[str] = None
+    transaction_type: Optional[str] = None
+    provider_reference: Optional[str] = None
+    provider: Optional[str] = None
         
 
 

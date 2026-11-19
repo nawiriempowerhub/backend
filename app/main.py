@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 
 from app.routers import about
 from .database import engine, Base
-from .routers import auth, programs, media, contact, volunteers, events
+from .routers import auth, programs, media, contact, volunteers, events, donations
 from fastapi.staticfiles import StaticFiles
 import os
 
@@ -54,10 +54,7 @@ app.include_router(contact.router)
 app.include_router(volunteers.router)
 app.include_router(events.router)
 app.include_router(about.router)
-# app.include_router(donations.router)
-# app.include_router(stk_push.router)
-# app.include_router(mpesa_callback.router)
-# app.include_router(submission.router, prefix="/api")
+app.include_router(donations.router)
 
 @app.get("/")
 def read_root():
