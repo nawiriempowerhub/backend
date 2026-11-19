@@ -73,9 +73,12 @@ def initiate_stk_push(
     """
     url = f"{PAYHERO_BASE_URL}/api/v2/payments"
 
+    # Clean phone number (strip '+', spaces, hyphens)
+    cleaned_phone = str(phone_number).replace("+", "").replace(" ", "").replace("-", "").strip()
+
     payload = {
         "amount": amount,
-        "phone_number": phone_number,
+        "phone_number": cleaned_phone,
         "channel_id": PAYHERO_CHANNEL_ID,
         "provider": "m-pesa",
         "external_reference": external_reference,

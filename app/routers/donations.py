@@ -56,19 +56,27 @@ def create_donation(
     external_ref = f"DON-{uuid.uuid4().hex[:10].upper()}"
 
     # Save the donation in PENDING state first
-    new_donation = models.Donation(
-        donor_name=donation.donor_name,
-        email=donation.email,
-        donor_phone=donation.donor_phone,
-        amount=donation.amount,
-        message=donation.message,
-        external_reference=external_ref,
-        payment_status=models.PaymentStatus.PENDING,
-        payment_provider="m-pesa",
-    )
-    db.add(new_donation)
-    db.commit()
-    db.refresh(new_donation)
+    try:
+        new_donation = models.Donation(
+            donor_name=donation.donor_name,
+            email=donation.email,
+            donor_phone=donation.donor_phone,
+            amount=donation.amount,
+            message=donation.message,
+            external_reference=external_ref,
+            payment_status=models.PaymentStatus.PENDING,
+            payment_provider="m-pesa",
+        )
+        db.add(new_donation)
+        db.commit()
+        db.refresh(new_donation)
+    except Exception as db_err:
+        db.rollback()
+        logger.exception("Database error while creating donation record: %s", db_err)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Database error saving donation: {db_err}"
+        )
 
     # Trigger PayHero STK Push
     try:
